@@ -69,9 +69,16 @@ export class KommoService {
     return response.json();
   }
 
-  async getContacts(limit = 100): Promise<KommoContact[]> {
+  async getContacts(limit = 100, fromDate?: Date): Promise<KommoContact[]> {
     try {
-      const response = await this.makeRequest(`/contacts?limit=${limit}`);
+      let endpoint = `/contacts?limit=${limit}`;
+      
+      if (fromDate) {
+        const fromTimestamp = Math.floor(fromDate.getTime() / 1000);
+        endpoint += `&filter[created_at][from]=${fromTimestamp}`;
+      }
+      
+      const response = await this.makeRequest(endpoint);
       return response._embedded?.contacts || [];
     } catch (error) {
       console.error('Error fetching Kommo contacts:', error);
@@ -79,9 +86,18 @@ export class KommoService {
     }
   }
 
-  async getLeads(limit = 100): Promise<KommoLead[]> {
+  async getLeads(limit = 100, fromDate?: Date): Promise<KommoLead[]> {
     try {
-      const response = await this.makeRequest(`/leads?limit=${limit}`);
+      let endpoint = `/leads?limit=${limit}`;
+      
+      if (fromDate) {
+        const fromTimestamp = Math.floor(fromDate.getTime() / 1000);
+        endpoint += `&filter[created_at][from]=${fromTimestamp}`;
+      }
+      
+      console.log('Kommo API endpoint:', endpoint);
+      const response = await this.makeRequest(endpoint);
+      console.log('Kommo API response:', response);
       return response._embedded?.leads || [];
     } catch (error) {
       console.error('Error fetching Kommo leads:', error);
@@ -103,15 +119,9 @@ export class KommoService {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const todayTimestamp = Math.floor(today.getTime() / 1000);
 
-      const leads = await this.getLeads();
-      
-      const leadsToday = leads.filter(lead => {
-        return lead.created_at >= todayTimestamp;
-      });
-
-      return leadsToday.length;
+      const leads = await this.getLeads(250, today);
+      return leads.length;
     } catch (error) {
       console.error('Error getting today\'s leads from Kommo:', error);
       return 0;
@@ -124,7 +134,7 @@ export class KommoService {
       today.setHours(0, 0, 0, 0);
       const todayTimestamp = Math.floor(today.getTime() / 1000);
 
-      const leads = await this.getLeads();
+      const leads = await this.getLeads(250, today);
       
       // Status ID 142 is typically "closed won" in Kommo, but this may vary by account
       const wonLeadsToday = leads.filter(lead => {
@@ -165,17 +175,20 @@ export class KommoService {
 
   async getDetailedLeads(maxDaysBack: number = 365): Promise<any[]> {
     try {
-      const leads = await this.getLeads(250);
-      const contacts = await this.getContacts(250);
-      
-      // Filter leads by date (up to maxDaysBack days)
+      // Calculate the cutoff date
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - maxDaysBack);
-      const cutoffTimestamp = Math.floor(cutoffDate.getTime() / 1000);
       
-      const filteredLeads = leads.filter(lead => 
-        lead.created_at >= cutoffTimestamp
-      );
+      console.log(`Fetching leads from ${cutoffDate.toISOString()} (${maxDaysBack} days back)`);
+      
+      // Use the API filter instead of client-side filtering
+      const leads = await this.getLeads(250, cutoffDate);
+      const contacts = await this.getContacts(250, cutoffDate);
+      
+      console.log(`Received ${leads.length} leads and ${contacts.length} contacts from Kommo`);
+      
+      // No need to filter again since API already filtered
+      const filteredLeads = leads;
       
       // Create a map of contact IDs to contact info
       const contactMap = new Map();
@@ -242,8 +255,12 @@ export class KommoService {
 
   async getDetailedSales(): Promise<any[]> {
     try {
-      const leads = await this.getLeads(250);
-      const contacts = await this.getContacts(250);
+      // Get leads from the last year for sales data
+      const cutoffDate = new Date();
+      cutoffDate.setFullYear(cutoffDate.getFullYear() - 1);
+      
+      const leads = await this.getLeads(250, cutoffDate);
+      const contacts = await this.getContacts(250, cutoffDate);
       
       // Create a map of contact IDs to contact info
       const contactMap = new Map();
