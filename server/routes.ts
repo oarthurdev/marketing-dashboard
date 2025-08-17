@@ -3,29 +3,29 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { DataProcessor } from "./services/dataProcessor";
 import { ReportGenerator } from "./services/reportGenerator";
-import cron from "node-schedule"; // Changed from node-cron to node-schedule for potential consistency, assuming it's a typo in the original or a preferred choice. If node-cron is strictly required, revert this.
+import schedule from "node-schedule"; // Changed from node-cron to node-schedule for potential consistency, assuming it's a typo in the original or a preferred choice. If node-cron is strictly required, revert this.
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const dataProcessor = new DataProcessor();
   const reportGenerator = new ReportGenerator();
 
   // Schedule daily data processing at 6 AM
-  cron.schedule('0 6 * * *', async () => {
-    console.log('Running scheduled daily data processing...');
+  schedule.scheduleJob("0 6 * * *", async () => {
+    console.log("Running scheduled daily data processing...");
     try {
       await dataProcessor.processDaily();
     } catch (error) {
-      console.error('Scheduled data processing failed:', error);
+      console.error("Scheduled data processing failed:", error);
     }
   });
 
   // Schedule daily report generation at 8 AM
-  cron.schedule('0 8 * * *', async () => {
-    console.log('Generating daily report...');
+  schedule.scheduleJob("0 8 * * *", async () => {
+    console.log("Generating daily report...");
     try {
       await reportGenerator.generateDailyReport();
     } catch (error) {
-      console.error('Daily report generation failed:', error);
+      console.error("Daily report generation failed:", error);
     }
   });
 
@@ -41,8 +41,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(metrics);
     } catch (error) {
-      console.error('Error fetching metrics:', error);
-      res.status(500).json({ message: 'Failed to fetch metrics' });
+      console.error("Error fetching metrics:", error);
+      res.status(500).json({ message: "Failed to fetch metrics" });
     }
   });
 
@@ -51,8 +51,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaigns = await storage.getCampaigns();
       res.json(campaigns);
     } catch (error) {
-      console.error('Error fetching campaigns:', error);
-      res.status(500).json({ message: 'Failed to fetch campaigns' });
+      console.error("Error fetching campaigns:", error);
+      res.status(500).json({ message: "Failed to fetch campaigns" });
     }
   });
 
@@ -62,8 +62,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activities = await storage.getRecentActivities(limit);
       res.json(activities);
     } catch (error) {
-      console.error('Error fetching activities:', error);
-      res.status(500).json({ message: 'Failed to fetch activities' });
+      console.error("Error fetching activities:", error);
+      res.status(500).json({ message: "Failed to fetch activities" });
     }
   });
 
@@ -72,46 +72,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connections = await storage.getApiConnections();
       res.json(connections);
     } catch (error) {
-      console.error('Error fetching API connections:', error);
-      res.status(500).json({ message: 'Failed to fetch API connections' });
+      console.error("Error fetching API connections:", error);
+      res.status(500).json({ message: "Failed to fetch API connections" });
     }
   });
 
   // Static data endpoint
-  app.get('/api/dashboard/historical/:days', async (req, res) => {
+  app.get("/api/dashboard/historical/:days", async (req, res) => {
     try {
       const days = parseInt(req.params.days) || 7;
       const metrics = await storage.getMetrics(days);
       res.json(metrics);
     } catch (error) {
-      console.error('Error fetching historical data:', error);
-      res.status(500).json({ error: 'Failed to fetch historical data' });
+      console.error("Error fetching historical data:", error);
+      res.status(500).json({ error: "Failed to fetch historical data" });
     }
   });
 
   // API Connections endpoints
-  app.post('/api/connections/update', async (req, res) => {
+  app.post("/api/connections/update", async (req, res) => {
     try {
       const { platform, config, isConnected } = req.body;
 
       const updatedConnection = await storage.updateApiConnection(platform, {
         config,
         isConnected,
-        lastSync: isConnected ? new Date() : null
+        lastSync: isConnected ? new Date() : null,
       });
 
       if (!updatedConnection) {
-        return res.status(404).json({ error: 'Connection not found' });
+        return res.status(404).json({ error: "Connection not found" });
       }
 
-      res.json({ message: 'Connection updated successfully', connection: updatedConnection });
+      res.json({
+        message: "Connection updated successfully",
+        connection: updatedConnection,
+      });
     } catch (error) {
-      console.error('Error updating connection:', error);
-      res.status(500).json({ error: 'Failed to update connection' });
+      console.error("Error updating connection:", error);
+      res.status(500).json({ error: "Failed to update connection" });
     }
   });
 
-  app.post('/api/connections/test', async (req, res) => {
+  app.post("/api/connections/test", async (req, res) => {
     try {
       const { platform } = req.body;
 
@@ -120,63 +123,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connection = await storage.getApiConnectionByPlatform(platform);
 
       if (!connection || !connection.isConnected) {
-        return res.status(400).json({ error: 'Connection not configured' });
+        return res.status(400).json({ error: "Connection not configured" });
       }
 
       let success = false;
       switch (platform) {
-        case 'google_analytics':
+        case "google_analytics":
           // Add Google Analytics connection test logic here
           success = true;
           break;
-        case 'facebook_ads':
+        case "facebook_ads":
           // Add Facebook Ads connection test logic here
           success = true;
           break;
-        case 'shopify':
+        case "shopify":
           // Add Shopify connection test logic here
           success = true;
           break;
-        case 'meta_ads':
+        case "meta_ads":
           // Add Meta Ads connection test logic here
           success = true;
           break;
-        case 'tiktok_ads':
+        case "tiktok_ads":
           // Add TikTok Ads connection test logic here
           success = true;
           break;
-        case 'kommo':
+        case "kommo":
           try {
-            const { KommoService } = await import('./services/kommo.js');
+            const { KommoService } = await import("./services/kommo.js");
             const kommoService = new KommoService();
             success = await kommoService.testConnection();
           } catch (error) {
-            console.error('Kommo connection test failed:', error);
+            console.error("Kommo connection test failed:", error);
             success = false;
           }
           break;
       }
 
       if (success) {
-        res.json({ message: 'Connection test successful', platform });
+        res.json({ message: "Connection test successful", platform });
       } else {
-        res.status(500).json({ error: 'Connection test failed', platform });
+        res.status(500).json({ error: "Connection test failed", platform });
       }
     } catch (error) {
-      console.error('Error testing connection:', error);
-      res.status(500).json({ error: 'Connection test failed' });
+      console.error("Error testing connection:", error);
+      res.status(500).json({ error: "Connection test failed" });
     }
   });
 
   // Reports endpoints
-  app.get('/api/reports', async (req, res) => {
+  app.get("/api/reports", async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 20;
       const reports = await storage.getReports(limit);
       res.json(reports);
     } catch (error) {
-      console.error('Error fetching reports:', error);
-      res.status(500).json({ message: 'Failed to fetch reports' });
+      console.error("Error fetching reports:", error);
+      res.status(500).json({ message: "Failed to fetch reports" });
     }
   });
 
@@ -184,19 +187,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       await dataProcessor.processDaily();
       const metrics = await storage.getLatestMetrics();
-      res.json({ message: 'Data refreshed successfully', metrics });
+      res.json({ message: "Data refreshed successfully", metrics });
     } catch (error) {
-      console.error('Error refreshing data:', error);
-      res.status(500).json({ message: 'Failed to refresh data' });
+      console.error("Error refreshing data:", error);
+      res.status(500).json({ message: "Failed to refresh data" });
     }
   });
 
   app.post("/api/reports/generate", async (req, res) => {
     try {
-      const { type = 'daily' } = req.body;
+      const { type = "daily" } = req.body;
 
       let reportContent: string;
-      if (type === 'weekly') {
+      if (type === "weekly") {
         reportContent = await reportGenerator.generateWeeklyReport();
       } else {
         reportContent = await reportGenerator.generateDailyReport();
@@ -205,58 +208,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const report = await storage.createReport({
         title: `${type.charAt(0).toUpperCase() + type.slice(1)} Marketing Report`,
         type: type,
-        format: 'html',
-        data: { generated: true, type }
+        format: "html",
+        data: { generated: true, type },
       });
 
       res.json({ content: reportContent, report });
     } catch (error) {
-      console.error('Error generating report:', error);
-      res.status(500).json({ error: 'Failed to generate report' });
+      console.error("Error generating report:", error);
+      res.status(500).json({ error: "Failed to generate report" });
     }
   });
 
   // Kommo-specific endpoints
-  app.get('/api/kommo/leads', async (req, res) => {
-      try {
-        const { KommoService } = await import('./services/kommo.js');
-        const kommoService = new KommoService();
-
-        if (!kommoService.isConfigured()) {
-          return res.status(503).json({ error: 'Kommo not configured' });
-        }
-
-        // Get period from query parameter, default to 365 days (1 year)
-        const periodDays = parseInt(req.query.period as string) || 365;
-        const leads = await kommoService.getDetailedLeads(periodDays);
-        res.json(leads);
-      } catch (error) {
-        console.error('Error fetching Kommo leads:', error);
-        res.status(500).json({ error: 'Failed to fetch leads' });
-      }
-    });
-
-  // Kommo sales endpoint
-  app.get('/api/kommo/sales', async (req, res) => {
+  app.get("/api/kommo/leads", async (req, res) => {
     try {
-      const { KommoService } = await import('./services/kommo.js');
+      const { KommoService } = await import("./services/kommo.js");
       const kommoService = new KommoService();
+
       if (!kommoService.isConfigured()) {
-        return res.status(400).json({ error: 'Kommo not configured' });
+        return res.status(503).json({ error: "Kommo not configured" });
       }
 
-      const period = req.query.period ? parseInt(req.query.period as string) : 365;
-      const sales = await kommoService.getDetailedSales(period);
-      res.json(sales);
+      // Get period from query parameter, default to 365 days (1 year)
+      const periodDays = parseInt(req.query.period as string) || 365;
+      const leads = await kommoService.getDetailedLeads(periodDays);
+      res.json(leads);
     } catch (error) {
-      console.error('Error fetching Kommo sales:', error);
-      res.status(500).json({ error: 'Failed to fetch sales data' });
+      console.error("Error fetching Kommo leads:", error);
+      res.status(500).json({ error: "Failed to fetch leads" });
     }
   });
 
-  app.get('/api/kommo/status', async (req, res) => {
+  // Kommo sales endpoint
+  app.get("/api/kommo/sales", async (req, res) => {
     try {
-      const { KommoService } = await import('./services/kommo.js');
+      const { KommoService } = await import("./services/kommo.js");
+      const kommoService = new KommoService();
+      if (!kommoService.isConfigured()) {
+        return res.status(400).json({ error: "Kommo not configured" });
+      }
+
+      const period = req.query.period
+        ? parseInt(req.query.period as string)
+        : 365;
+      const sales = await kommoService.getDetailedSales(period);
+      res.json(sales);
+    } catch (error) {
+      console.error("Error fetching Kommo sales:", error);
+      res.status(500).json({ error: "Failed to fetch sales data" });
+    }
+  });
+
+  app.get("/api/kommo/status", async (req, res) => {
+    try {
+      const { KommoService } = await import("./services/kommo.js");
       const kommoService = new KommoService();
 
       const isConfigured = kommoService.isConfigured();
@@ -268,33 +273,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ isConfigured, isConnected });
     } catch (error) {
-      console.error('Error checking Kommo status:', error);
-      res.status(500).json({ error: 'Failed to check Kommo status' });
+      console.error("Error checking Kommo status:", error);
+      res.status(500).json({ error: "Failed to check Kommo status" });
     }
   });
 
   app.post("/api/reports/send", async (req, res) => {
     try {
-      const { type = 'daily', method = 'email', recipient } = req.body;
+      const { type = "daily", method = "email", recipient } = req.body;
 
       if (!recipient) {
-        return res.status(400).json({ message: 'Recipient is required' });
+        return res.status(400).json({ message: "Recipient is required" });
       }
 
-      const reportContent = type === 'weekly'
-        ? await reportGenerator.generateWeeklyReport()
-        : await reportGenerator.generateDailyReport();
+      const reportContent =
+        type === "weekly"
+          ? await reportGenerator.generateWeeklyReport()
+          : await reportGenerator.generateDailyReport();
 
-      if (method === 'slack') {
+      if (method === "slack") {
         await reportGenerator.sendReportSlack(reportContent, recipient);
       } else {
         await reportGenerator.sendReportEmail(reportContent, recipient);
       }
 
-      res.json({ message: 'Report sent successfully' });
+      res.json({ message: "Report sent successfully" });
     } catch (error) {
-      console.error('Error sending report:', error);
-      res.status(500).json({ message: 'Failed to send report' });
+      console.error("Error sending report:", error);
+      res.status(500).json({ message: "Failed to send report" });
     }
   });
 
