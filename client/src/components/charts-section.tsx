@@ -10,22 +10,23 @@ interface ChartsSectionProps {
   metrics?: Metrics;
 }
 
-export default function ChartsSection({ historicalData, metrics }: ChartsSectionProps) {
+export function ChartsSection({ data }: { data?: any }) {
   // Prepare revenue trend data
-  const revenueData = historicalData?.slice(0, 7).reverse().map((metric, index) => ({
-    name: new Date(metric.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    revenue: parseFloat(metric.dailyRevenue),
+  const revenueData = data?.revenueChart?.map((item: any) => ({
+    name: new Date(item.date).toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' }),
+    revenue: item.revenue,
+    leads: item.leads,
   })) || [];
 
   // Prepare lead sources data
-  const leadSourcesData = metrics?.leadSources ? Object.entries(metrics.leadSources).map(([name, value]) => ({
-    name,
-    value,
-  })) : [];
+  const leadSourcesData = data?.leadSources?.map((source: any) => ({
+    name: source.source,
+    value: source.leads,
+  })) || [];
 
   const COLORS = ['#2563EB', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444'];
 
-  const isLoading = !historicalData || !metrics;
+  const isLoading = !data;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8" data-testid="charts-section">
@@ -33,7 +34,7 @@ export default function ChartsSection({ historicalData, metrics }: ChartsSection
       <Card className="shadow-sm" data-testid="card-revenue-chart">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-gray-900">Revenue Trend</CardTitle>
+            <CardTitle className="text-lg font-semibold text-gray-900">Tendência de Receita</CardTitle>
             <div className="flex items-center space-x-2">
               <Button variant="ghost" size="sm" className="text-sm text-gray-500 hover:text-gray-700">
                 7D
@@ -59,10 +60,10 @@ export default function ChartsSection({ historicalData, metrics }: ChartsSection
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis 
-                    tickFormatter={(value) => `$${value.toLocaleString()}`}
+                    tickFormatter={(value) => `R$${value.toLocaleString()}`}
                   />
                   <Tooltip 
-                    formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Daily Revenue']}
+                    formatter={(value) => [`R$${Number(value).toLocaleString()}`, 'Receita Diária']}
                   />
                   <Line 
                     type="monotone" 
@@ -82,7 +83,7 @@ export default function ChartsSection({ historicalData, metrics }: ChartsSection
       <Card className="shadow-sm" data-testid="card-lead-sources">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-gray-900">Lead Sources</CardTitle>
+            <CardTitle className="text-lg font-semibold text-gray-900">Fontes de Leads</CardTitle>
             <Button variant="ghost" size="sm" className="text-sm text-gray-500 hover:text-gray-700">
               <MoreHorizontal className="w-4 h-4" />
             </Button>

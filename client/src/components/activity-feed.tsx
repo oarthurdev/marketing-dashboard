@@ -28,11 +28,11 @@ export default function ActivityFeed({ activities, isLoading }: ActivityFeedProp
     const now = new Date();
     const diff = now.getTime() - new Date(timestamp).getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
-    
+
     if (hours < 1) return 'Just now';
     if (hours === 1) return '1 hour ago';
     if (hours < 24) return `${hours} hours ago`;
-    
+
     const days = Math.floor(hours / 24);
     if (days === 1) return '1 day ago';
     return `${days} days ago`;
@@ -42,7 +42,7 @@ export default function ActivityFeed({ activities, isLoading }: ActivityFeedProp
     return (
       <Card className="shadow-sm" data-testid="activity-feed-loading">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold text-gray-900">Recent Activity</CardTitle>
+          <CardTitle className="text-lg font-semibold text-gray-900">Atividade Recente</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
@@ -65,7 +65,7 @@ export default function ActivityFeed({ activities, isLoading }: ActivityFeedProp
   return (
     <Card className="shadow-sm" data-testid="card-recent-activity">
       <CardHeader>
-        <CardTitle className="text-lg font-semibold text-gray-900">Recent Activity</CardTitle>
+        <CardTitle className="text-lg font-semibold text-gray-900">Atividade Recente</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flow-root">
@@ -73,7 +73,7 @@ export default function ActivityFeed({ activities, isLoading }: ActivityFeedProp
             {activities.map((activity, index) => {
               const { icon: Icon, bgColor } = getActivityIcon(activity.type);
               const isLast = index === activities.length - 1;
-              
+
               return (
                 <li key={activity.id} data-testid={`activity-${activity.id}`}>
                   <div className="relative pb-8">

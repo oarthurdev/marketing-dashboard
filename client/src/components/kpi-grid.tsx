@@ -8,11 +8,12 @@ interface KPIGridProps {
   isLoading: boolean;
 }
 
-export default function KPIGrid({ metrics, isLoading }: KPIGridProps) {
+export function KpiGrid({ data }: { data?: any }) {
+  const isLoading = !data;
   const kpiItems = [
     {
       title: "Total Leads",
-      value: metrics?.totalLeads?.toLocaleString() || "0",
+      value: data?.totalLeads?.toLocaleString() || "0",
       change: "+12.5%",
       icon: Users,
       bgColor: "bg-blue-100",
@@ -21,7 +22,7 @@ export default function KPIGrid({ metrics, isLoading }: KPIGridProps) {
     },
     {
       title: "Conversion Rate",
-      value: `${parseFloat(metrics?.conversionRate || "0").toFixed(1)}%`,
+      value: `${parseFloat(data?.conversionRate || "0").toFixed(1)}%`,
       change: "+0.8%",
       icon: TrendingUp,
       bgColor: "bg-green-100",
@@ -30,7 +31,7 @@ export default function KPIGrid({ metrics, isLoading }: KPIGridProps) {
     },
     {
       title: "Daily Revenue",
-      value: `$${parseFloat(metrics?.dailyRevenue || "0").toLocaleString()}`,
+      value: `R$${parseFloat(data?.totalRevenue || "0").toLocaleString()}`,
       change: "+18.2%",
       icon: DollarSign,
       bgColor: "bg-yellow-100",
@@ -39,7 +40,7 @@ export default function KPIGrid({ metrics, isLoading }: KPIGridProps) {
     },
     {
       title: "Avg. CPA",
-      value: `$${parseFloat(metrics?.avgCPA || "0").toFixed(2)}`,
+      value: `R$${parseFloat(data?.avgOrderValue || "0").toFixed(2)}`,
       change: "-5.3%",
       icon: Target,
       bgColor: "bg-red-100",

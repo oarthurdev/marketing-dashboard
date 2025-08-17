@@ -9,7 +9,8 @@ interface CampaignTableProps {
   isLoading: boolean;
 }
 
-export default function CampaignTable({ campaigns, isLoading }: CampaignTableProps) {
+export function CampaignTable({ campaigns }: { campaigns: any[] }) {
+  const isLoading = !campaigns;
   const getROIBadgeVariant = (roi: string) => {
     const roiValue = parseFloat(roi);
     if (roiValue > 150) return "default";
@@ -31,7 +32,7 @@ export default function CampaignTable({ campaigns, isLoading }: CampaignTablePro
     return (
       <Card className="shadow-sm" data-testid="campaign-table-loading">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold text-gray-900">Campaign Performance</CardTitle>
+          <CardTitle className="text-lg font-semibold text-gray-900">Performance de Campanhas</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -60,9 +61,9 @@ export default function CampaignTable({ campaigns, isLoading }: CampaignTablePro
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Campaign</TableHead>
+                <TableHead>Campanha</TableHead>
                 <TableHead>Leads</TableHead>
-                <TableHead>Spend</TableHead>
+                <TableHead>Gasto</TableHead>
                 <TableHead>ROI</TableHead>
               </TableRow>
             </TableHeader>
@@ -78,17 +79,17 @@ export default function CampaignTable({ campaigns, isLoading }: CampaignTablePro
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-gray-900" data-testid={`text-campaign-leads-${campaign.id}`}>
-                    {campaign.leads.toLocaleString()}
+                    {campaign.conversions?.toLocaleString() || '0'}
                   </TableCell>
                   <TableCell className="text-sm text-gray-900" data-testid={`text-campaign-spend-${campaign.id}`}>
-                    ${parseFloat(campaign.spend).toLocaleString()}
+                    R${parseFloat(campaign.spent || 0).toLocaleString()}
                   </TableCell>
                   <TableCell>
                     <Badge 
-                      variant={getROIBadgeVariant(campaign.roi)}
+                      variant={getROIBadgeVariant(((campaign.revenue || 0) / (campaign.spent || 1) * 100).toString())}
                       data-testid={`badge-campaign-roi-${campaign.id}`}
                     >
-                      +{parseFloat(campaign.roi).toFixed(1)}%
+                      +{((campaign.revenue || 0) / (campaign.spent || 1) * 100).toFixed(1)}%
                     </Badge>
                   </TableCell>
                 </TableRow>
@@ -96,7 +97,7 @@ export default function CampaignTable({ campaigns, isLoading }: CampaignTablePro
               {campaigns.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-gray-500 py-8">
-                    No campaigns data available
+                    Nenhum dado de campanha disponível
                   </TableCell>
                 </TableRow>
               )}
