@@ -175,17 +175,54 @@ export class KommoService {
       });
 
       return leads.map(lead => {
-        const contact = contactMap.get(lead.id) || {};
+        // Try to find the corresponding contact
+        let contact = contactMap.get(lead.id);
+        
+        // If no direct match, try to find by lead's embedded contact data
+        if (!contact && lead._embedded?.contacts?.[0]) {
+          contact = lead._embedded.contacts[0];
+        }
+
+        // Extract email from different possible sources
+        let email = '';
+        if (contact?.custom_fields_values) {
+          const emailField = contact.custom_fields_values.find(field => 
+            field.field_code === 'EMAIL' || field.field_name === 'Email'
+          );
+          email = emailField?.values?.[0]?.value || '';
+        }
+
+        // Extract phone from different possible sources
+        let phone = '';
+        if (contact?.custom_fields_values) {
+          const phoneField = contact.custom_fields_values.find(field => 
+            field.field_code === 'PHONE' || field.field_name === 'Telefone'
+          );
+          phone = phoneField?.values?.[0]?.value || '';
+        }
+
+        // Extract custom fields
+        const customFields = contact?.custom_fields_values?.map(field => ({
+          name: field.field_name || field.field_code,
+          value: field.values?.[0]?.value || '',
+          code: field.field_code
+        })).filter(field => 
+          field.code !== 'EMAIL' && field.code !== 'PHONE' && field.value
+        ) || [];
+
         return {
           id: lead.id.toString(),
-          name: lead.name || contact.name || 'Lead sem nome',
-          email: contact.custom_fields_values?.find(field => field.field_code === 'EMAIL')?.values?.[0]?.value || '',
-          phone: contact.custom_fields_values?.find(field => field.field_code === 'PHONE')?.values?.[0]?.value || '',
+          name: lead.name || contact?.name || 'Lead sem nome',
+          email: email,
+          phone: phone,
           source: 'Kommo CRM',
           status: this.getLeadStatus(lead.status_id),
           value: lead.price || 0,
           createdAt: new Date(lead.created_at * 1000).toISOString(),
-          lastActivity: lead.updated_at ? `Atualizado em ${new Date(lead.updated_at * 1000).toLocaleDateString('pt-BR')}` : ''
+          lastActivity: lead.updated_at ? `Atualizado em ${new Date(lead.updated_at * 1000).toLocaleDateString('pt-BR')}` : '',
+          pipelineId: lead.pipeline_id,
+          responsibleUserId: lead.responsible_user_id,
+          customFields: customFields
         };
       });
     } catch (error) {
