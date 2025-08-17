@@ -27,7 +27,7 @@ import {
 import { KpiGrid } from "@/components/kpi-grid";
 import { ChartsSection } from "@/components/charts-section";
 import { CampaignTable } from "@/components/campaign-table";
-import { ActivityFeed } from "@/components/activity-feed";
+import ActivityFeed from "@/components/activity-feed";
 
 interface DashboardData {
   totalRevenue: number;
