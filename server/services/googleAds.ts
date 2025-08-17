@@ -31,6 +31,10 @@ export class GoogleAdsService {
     this.refreshToken = process.env.GOOGLE_ADS_REFRESH_TOKEN || '';
   }
 
+  isConfigured(): boolean {
+    return !!(this.customerId && this.developerToken && this.clientId && this.clientSecret && this.refreshToken);
+  }
+
   private async getAccessToken(): Promise<string> {
     if (this.accessToken) return this.accessToken;
 

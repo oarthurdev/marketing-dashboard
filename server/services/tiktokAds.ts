@@ -11,6 +11,10 @@ export class TikTokAdsService {
     this.secret = process.env.TIKTOK_SECRET || null;
   }
 
+  isConfigured(): boolean {
+    return !!(this.accessToken && this.advertiserId);
+  }
+
   private async makeRequest(endpoint: string, params: any = {}) {
     if (!this.accessToken) {
       throw new Error('TikTok Ads access token not configured');

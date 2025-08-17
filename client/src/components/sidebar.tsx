@@ -1,5 +1,5 @@
 import React from "react";
-import { BarChart3, Users, ShoppingCart, Megaphone, FileText, Settings, HelpCircle } from "lucide-react";
+import { BarChart3, Users, ShoppingCart, Megaphone, FileText, Settings, HelpCircle, DollarSign, Target } from "lucide-react";
 import type { ApiConnection } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 
@@ -52,29 +52,32 @@ export default function Sidebar({ connections }: SidebarProps) {
             Dashboard
           </Link>
 
-          <a
-            href="#"
-            className="flex items-center px-4 py-3 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
-          >
+          <Link href="/leads" className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
+            isActive('/leads')
+              ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+          }`}>
             <Users className="w-5 h-5 mr-3" />
             Leads
-          </a>
+          </Link>
 
-          <a
-            href="#"
-            className="flex items-center px-4 py-3 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
-          >
-            <ShoppingCart className="w-5 h-5 mr-3" />
-            Sales
-          </a>
+          <Link href="/sales" className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
+            isActive('/sales')
+              ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+          }`}>
+            <DollarSign className="w-5 h-5 mr-3" />
+            Vendas
+          </Link>
 
-          <a
-            href="#"
-            className="flex items-center px-4 py-3 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
-          >
-            <Megaphone className="w-5 h-5 mr-3" />
-            Campaigns
-          </a>
+          <Link href="/campaigns" className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
+            isActive('/campaigns')
+              ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+          }`}>
+            <Target className="w-5 h-5 mr-3" />
+            Campanhas
+          </Link>
 
           <Link href="/reports" className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
             isActive('/reports')

@@ -35,16 +35,17 @@ export class DataProcessor {
       console.log('Starting daily data processing...');
 
       // Collect data from all sources
-      const [hubspotData, googleAdsData, shopifyData, metaAdsData, tiktokAdsData] = await Promise.allSettled([
+      const [hubspotData, googleAdsData, shopifyData, metaAdsData, tiktokAdsData, kommoData] = await Promise.allSettled([
         this.collectHubSpotData(),
         this.collectGoogleAdsData(),
         this.collectShopifyData(),
         this.collectMetaAdsData(),
         this.collectTikTokAdsData(),
+        this.collectKommoData(),
       ]);
 
       // Process and consolidate metrics
-      const metrics = await this.consolidateMetrics(hubspotData, googleAdsData, shopifyData, metaAdsData, tiktokAdsData);
+      const metrics = await this.consolidateMetrics(hubspotData, googleAdsData, shopifyData, metaAdsData, tiktokAdsData, kommoData);
 
       // Save consolidated metrics
       await storage.createMetrics(metrics);
@@ -253,13 +254,42 @@ export class DataProcessor {
 
   private async collectKommoData() {
     try {
+      if (this.isDevelopmentMode && !this.isKommoConfigured()) {
+        const leadsToday = Math.floor(Math.random() * 15) + 3;
+        const revenueToday = Math.floor(Math.random() * 3000) + 1000;
+
+        await storage.createActivity({
+          type: 'data_sync',
+          source: 'kommo',
+          details: `Synced ${leadsToday} leads, $${revenueToday} revenue (mock data)`,
+          amount: revenueToday.toString()
+        });
+
+        return { leadsToday, revenueToday };
+      }
+
       const leadsToday = await this.kommo.getLeadsToday();
       const revenueToday = await this.kommo.getRevenueToday();
+
+      await storage.createActivity({
+        type: 'data_sync',
+        source: 'kommo',
+        details: `Synced ${leadsToday} leads, $${revenueToday} revenue`,
+        amount: revenueToday.toString()
+      });
+
       return { leadsToday, revenueToday };
     } catch (error) {
       console.error('Error collecting Kommo data:', error);
+      if (this.isDevelopmentMode) {
+        return { leadsToday: 5, revenueToday: 1500 };
+      }
       return { leadsToday: 0, revenueToday: 0 };
     }
+  }
+
+  private isKommoConfigured(): boolean {
+    return !!(process.env.KOMMO_ACCESS_TOKEN && process.env.KOMMO_SUBDOMAIN);
   }
 
   private async consolidateMetrics(
@@ -267,13 +297,15 @@ export class DataProcessor {
     googleAdsResult: PromiseSettledResult<any>,
     shopifyResult: PromiseSettledResult<any>,
     metaAdsResult: PromiseSettledResult<any>,
-    tiktokAdsResult: PromiseSettledResult<any>
+    tiktokAdsResult: PromiseSettledResult<any>,
+    kommoResult: PromiseSettledResult<any>
   ): Promise<InsertMetrics> {
     const hubspotData = hubspotResult.status === 'fulfilled' ? hubspotResult.value : { leadsToday: 0, revenueToday: 0 };
     const googleAdsData = googleAdsResult.status === 'fulfilled' ? googleAdsResult.value : { leads: 0, spend: 0, cpa: 0 };
     const shopifyData = shopifyResult.status === 'fulfilled' ? shopifyResult.value : { revenue: 0, orders: 0 };
     const metaAdsData = metaAdsResult.status === 'fulfilled' ? metaAdsResult.value : { leads: 0, spend: 0 };
     const tiktokAdsData = tiktokAdsResult.status === 'fulfilled' ? tiktokAdsResult.value : { leads: 0, spend: 0 };
+    const kommoData = kommoResult.status === 'fulfilled' ? kommoResult.value : { leadsToday: 0, revenueToday: 0 };
 
     // Aggregate totals
     const totalLeads = hubspotData.leadsToday + googleAdsData.leads + metaAdsData.leads + tiktokAdsData.leads + kommoData.leadsToday;

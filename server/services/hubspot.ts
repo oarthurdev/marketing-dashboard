@@ -28,6 +28,10 @@ export class HubSpotService {
     this.apiKey = process.env.HUBSPOT_API_KEY || process.env.HUBSPOT_ACCESS_TOKEN || '';
   }
 
+  isConfigured(): boolean {
+    return !!this.apiKey;
+  }
+
   async getContacts(limit = 100): Promise<HubSpotContact[]> {
     if (!this.apiKey) {
       throw new Error('HubSpot API key not configured');
