@@ -1,49 +1,148 @@
-import { Switch, Route } from "wouter";
-import { useQuery } from "@tanstack/react-query";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
+
+import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/toaster";
+import { Router, Route, Switch } from "wouter";
+import AuthGuard from "@/components/auth-guard";
 import Sidebar from "@/components/sidebar";
+
+// Auth pages
+import Login from "@/pages/login";
+import TrialSignup from "@/pages/trial-signup";
+import TrialConfirmation from "@/pages/trial-confirmation";
+import Pricing from "@/pages/pricing";
+
+// Protected pages
 import Dashboard from "@/pages/dashboard";
-import ApiSettings from "@/pages/api-settings";
-import Reports from "@/pages/reports";
 import Leads from "@/pages/leads";
 import Sales from "@/pages/sales";
 import Campaigns from "@/pages/campaigns";
+import Reports from "@/pages/reports";
+import ApiSettings from "@/pages/api-settings";
 import NotFound from "@/pages/not-found";
-import type { ApiConnection } from "@shared/schema";
 
-function Router() {
-  const { data: connections } = useQuery<ApiConnection[]>({
-    queryKey: ['/api/dashboard/connections'],
-  });
-
-  return (
-    <div className="min-h-screen flex bg-gray-50">
-      <Sidebar connections={connections || []} />
-
-      <main className="flex-1 ml-64 p-6">
-        <Switch>
-          <Route path="/" component={Dashboard} />
-          <Route path="/leads" component={Leads} />
-          <Route path="/sales" component={Sales} />
-          <Route path="/campaigns" component={Campaigns} />
-          <Route path="/api-settings" component={ApiSettings} />
-          <Route path="/reports" component={Reports} />
-          <Route component={NotFound} />
-        </Switch>
-      </main>
-    </div>
-  );
-}
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <Router>
+          <div className="min-h-screen bg-gray-50">
+            <Switch>
+              {/* Public routes */}
+              <Route path="/login" component={Login} />
+              <Route path="/trial-signup" component={TrialSignup} />
+              <Route path="/trial-confirmation" component={TrialConfirmation} />
+              <Route path="/pricing" component={Pricing} />
+              
+              {/* Protected routes */}
+              <Route path="/dashboard">
+                <AuthGuard>
+                  <div className="flex">
+                    <Sidebar />
+                    <main className="flex-1 ml-64">
+                      <div className="p-8">
+                        <Dashboard />
+                      </div>
+                    </main>
+                  </div>
+                </AuthGuard>
+              </Route>
+
+              <Route path="/leads">
+                <AuthGuard>
+                  <div className="flex">
+                    <Sidebar />
+                    <main className="flex-1 ml-64">
+                      <div className="p-8">
+                        <Leads />
+                      </div>
+                    </main>
+                  </div>
+                </AuthGuard>
+              </Route>
+
+              <Route path="/sales">
+                <AuthGuard>
+                  <div className="flex">
+                    <Sidebar />
+                    <main className="flex-1 ml-64">
+                      <div className="p-8">
+                        <Sales />
+                      </div>
+                    </main>
+                  </div>
+                </AuthGuard>
+              </Route>
+
+              <Route path="/campaigns">
+                <AuthGuard>
+                  <div className="flex">
+                    <Sidebar />
+                    <main className="flex-1 ml-64">
+                      <div className="p-8">
+                        <Campaigns />
+                      </div>
+                    </main>
+                  </div>
+                </AuthGuard>
+              </Route>
+
+              <Route path="/reports">
+                <AuthGuard>
+                  <div className="flex">
+                    <Sidebar />
+                    <main className="flex-1 ml-64">
+                      <div className="p-8">
+                        <Reports />
+                      </div>
+                    </main>
+                  </div>
+                </AuthGuard>
+              </Route>
+
+              <Route path="/settings">
+                <AuthGuard>
+                  <div className="flex">
+                    <Sidebar />
+                    <main className="flex-1 ml-64">
+                      <div className="p-8">
+                        <ApiSettings />
+                      </div>
+                    </main>
+                  </div>
+                </AuthGuard>
+              </Route>
+
+              {/* Default route */}
+              <Route path="/">
+                <AuthGuard>
+                  <div className="flex">
+                    <Sidebar />
+                    <main className="flex-1 ml-64">
+                      <div className="p-8">
+                        <Dashboard />
+                      </div>
+                    </main>
+                  </div>
+                </AuthGuard>
+              </Route>
+
+              {/* 404 route */}
+              <Route component={NotFound} />
+            </Switch>
+          </div>
+        </Router>
         <Toaster />
-        <Router />
       </TooltipProvider>
     </QueryClientProvider>
   );
