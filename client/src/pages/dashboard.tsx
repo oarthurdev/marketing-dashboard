@@ -1,6 +1,6 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import Sidebar from "@/components/sidebar";
 import KPIGrid from "@/components/kpi-grid";
 import ChartsSection from "@/components/charts-section";
 import CampaignTable from "@/components/campaign-table";
@@ -11,7 +11,7 @@ import { Calendar, Download, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { Metrics, Campaign, Activity, ApiConnection } from "@shared/schema";
+import type { Metrics, Campaign, Activity } from "@shared/schema";
 
 export default function Dashboard() {
   const [dateRange, setDateRange] = useState("7");
@@ -27,10 +27,6 @@ export default function Dashboard() {
 
   const { data: activities, isLoading: activitiesLoading } = useQuery<Activity[]>({
     queryKey: ['/api/dashboard/activities'],
-  });
-
-  const { data: connections } = useQuery<ApiConnection[]>({
-    queryKey: ['/api/dashboard/connections'],
   });
 
   const { data: historicalData } = useQuery<Metrics[]>({
@@ -86,99 +82,95 @@ export default function Dashboard() {
   const isLoading = metricsLoading || campaignsLoading || activitiesLoading;
 
   return (
-    <div className="min-h-screen flex bg-gray-50" data-testid="dashboard-layout">
-      <Sidebar connections={connections || []} />
-      
-      <main className="flex-1 ml-64 p-6" data-testid="main-content">
-        {/* Header */}
-        <header className="flex items-center justify-between mb-8" data-testid="dashboard-header">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Marketing Dashboard</h1>
-            <p className="text-gray-500">Daily performance overview</p>
+    <div data-testid="dashboard-layout">
+      {/* Header */}
+      <header className="flex items-center justify-between mb-8" data-testid="dashboard-header">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Marketing Dashboard</h1>
+          <p className="text-gray-500">Daily performance overview</p>
+        </div>
+        
+        <div className="flex items-center space-x-4">
+          {/* Date Range Picker */}
+          <div className="flex items-center space-x-2">
+            <Calendar className="w-4 h-4 text-gray-400" />
+            <Select value={dateRange} onValueChange={setDateRange}>
+              <SelectTrigger className="w-40" data-testid="select-date-range">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">Last 7 days</SelectItem>
+                <SelectItem value="30">Last 30 days</SelectItem>
+                <SelectItem value="90">This quarter</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
-          <div className="flex items-center space-x-4">
-            {/* Date Range Picker */}
-            <div className="flex items-center space-x-2">
-              <Calendar className="w-4 h-4 text-gray-400" />
-              <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger className="w-40" data-testid="select-date-range">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7">Last 7 days</SelectItem>
-                  <SelectItem value="30">Last 30 days</SelectItem>
-                  <SelectItem value="90">This quarter</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <Button 
-              variant="outline" 
-              onClick={handleExport}
-              data-testid="button-export"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export Report
-            </Button>
-            
-            <Button 
-              onClick={handleRefresh}
-              disabled={isLoading}
-              data-testid="button-refresh"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh Data
-            </Button>
-            
-            {/* User Profile */}
-            <div className="flex items-center space-x-3">
-              <img 
-                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=150&h=150" 
-                alt="User profile" 
-                className="w-8 h-8 rounded-full"
-                data-testid="img-user-avatar"
-              />
-              <div className="text-sm">
-                <p className="font-medium text-gray-900" data-testid="text-user-name">John Mitchell</p>
-                <p className="text-gray-500" data-testid="text-user-role">Marketing Manager</p>
-              </div>
+          <Button 
+            variant="outline" 
+            onClick={handleExport}
+            data-testid="button-export"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export Report
+          </Button>
+          
+          <Button 
+            onClick={handleRefresh}
+            disabled={isLoading}
+            data-testid="button-refresh"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh Data
+          </Button>
+          
+          {/* User Profile */}
+          <div className="flex items-center space-x-3">
+            <img 
+              src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=150&h=150" 
+              alt="User profile" 
+              className="w-8 h-8 rounded-full"
+              data-testid="img-user-avatar"
+            />
+            <div className="text-sm">
+              <p className="font-medium text-gray-900" data-testid="text-user-name">John Mitchell</p>
+              <p className="text-gray-500" data-testid="text-user-role">Marketing Manager</p>
             </div>
           </div>
-        </header>
-
-        {/* KPI Grid */}
-        <KPIGrid metrics={metrics} isLoading={metricsLoading} />
-
-        {/* Charts Section */}
-        <ChartsSection historicalData={historicalData} metrics={metrics} />
-
-        {/* Data Tables */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <CampaignTable campaigns={campaigns || []} isLoading={campaignsLoading} />
-          <ActivityFeed activities={activities || []} isLoading={activitiesLoading} />
         </div>
+      </header>
 
-        {/* Footer */}
-        <footer className="mt-12 border-t border-gray-200 pt-6" data-testid="dashboard-footer">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-500">
-              <p>Last updated: <span data-testid="text-last-updated">
-                {metrics?.createdAt ? new Date(metrics.createdAt).toLocaleString() : 'Never'}
-              </span></p>
-              <p>Next refresh: <span data-testid="text-next-refresh">In 6 hours</span></p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/api-settings" className="text-sm text-gray-500 hover:text-gray-700" data-testid="button-api-settings">
-                API Settings
-              </Link>
-              <button className="text-sm text-gray-500 hover:text-gray-700" data-testid="button-support">
-                Help & Support
-              </button>
-            </div>
+      {/* KPI Grid */}
+      <KPIGrid metrics={metrics} isLoading={metricsLoading} />
+
+      {/* Charts Section */}
+      <ChartsSection historicalData={historicalData} metrics={metrics} />
+
+      {/* Data Tables */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <CampaignTable campaigns={campaigns || []} isLoading={campaignsLoading} />
+        <ActivityFeed activities={activities || []} isLoading={activitiesLoading} />
+      </div>
+
+      {/* Footer */}
+      <footer className="mt-12 border-t border-gray-200 pt-6" data-testid="dashboard-footer">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-500">
+            <p>Last updated: <span data-testid="text-last-updated">
+              {metrics?.createdAt ? new Date(metrics.createdAt).toLocaleString() : 'Never'}
+            </span></p>
+            <p>Next refresh: <span data-testid="text-next-refresh">In 6 hours</span></p>
           </div>
-        </footer>
-      </main>
+          <div className="flex items-center space-x-4">
+            <Link href="/api-settings" className="text-sm text-gray-500 hover:text-gray-700" data-testid="button-api-settings">
+              API Settings
+            </Link>
+            <button className="text-sm text-gray-500 hover:text-gray-700" data-testid="button-support">
+              Help & Support
+            </button>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

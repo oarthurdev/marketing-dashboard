@@ -115,122 +115,120 @@ export default function Reports() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Marketing Reports</h1>
-          <p className="text-gray-600 mt-2">Generate and download comprehensive marketing performance reports</p>
-        </div>
+    <div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Marketing Reports</h1>
+        <p className="text-gray-600 mt-2">Generate and download comprehensive marketing performance reports</p>
+      </div>
 
-        {/* Generate New Report Section */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Generate New Report</CardTitle>
-            <CardDescription>
-              Create a comprehensive marketing performance report for your selected time period
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-4">
-              <div className="flex-1">
-                <Select value={reportType} onValueChange={setReportType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select report type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {reportTypeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        <div className="flex items-center space-x-2">
-                          {getReportIcon(option.value)}
-                          <div>
-                            <div className="font-medium">{option.label}</div>
-                            <div className="text-sm text-gray-500">{option.description}</div>
-                          </div>
+      {/* Generate New Report Section */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Generate New Report</CardTitle>
+          <CardDescription>
+            Create a comprehensive marketing performance report for your selected time period
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center space-x-4">
+            <div className="flex-1">
+              <Select value={reportType} onValueChange={setReportType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select report type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {reportTypeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <div className="flex items-center space-x-2">
+                        {getReportIcon(option.value)}
+                        <div>
+                          <div className="font-medium">{option.label}</div>
+                          <div className="text-sm text-gray-500">{option.description}</div>
                         </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                onClick={() => generateReportMutation.mutate(reportType)}
-                disabled={generateReportMutation.isPending}
-                className="flex items-center space-x-2"
-              >
-                <FileText className="w-4 h-4" />
-                <span>
-                  {generateReportMutation.isPending ? "Generating..." : "Generate Report"}
-                </span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Reports History */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Report History</CardTitle>
-            <CardDescription>
-              Previously generated reports are available for download
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <FileText className="w-8 h-8 animate-pulse text-gray-400" />
-                <span className="ml-2 text-gray-500">Loading reports...</span>
-              </div>
-            ) : reports && reports.length > 0 ? (
-              <div className="space-y-4">
-                {reports.map((report) => (
-                  <div
-                    key={report.id}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg">
-                        {getReportIcon(report.type)}
                       </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">{report.title}</h4>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Badge className={getStatusColor(report.format)}>
-                            {report.format.toUpperCase()}
-                          </Badge>
-                          <span className="text-sm text-gray-500">
-                            Generated on {new Date(report.generatedAt!).toLocaleDateString()}
-                          </span>
-                        </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              onClick={() => generateReportMutation.mutate(reportType)}
+              disabled={generateReportMutation.isPending}
+              className="flex items-center space-x-2"
+            >
+              <FileText className="w-4 h-4" />
+              <span>
+                {generateReportMutation.isPending ? "Generating..." : "Generate Report"}
+              </span>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Reports History */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Report History</CardTitle>
+          <CardDescription>
+            Previously generated reports are available for download
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <FileText className="w-8 h-8 animate-pulse text-gray-400" />
+              <span className="ml-2 text-gray-500">Loading reports...</span>
+            </div>
+          ) : reports && reports.length > 0 ? (
+            <div className="space-y-4">
+              {reports.map((report) => (
+                <div
+                  key={report.id}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg">
+                      {getReportIcon(report.type)}
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900">{report.title}</h4>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <Badge className={getStatusColor(report.format)}>
+                          {report.format.toUpperCase()}
+                        </Badge>
+                        <span className="text-sm text-gray-500">
+                          Generated on {new Date(report.generatedAt!).toLocaleDateString()}
+                        </span>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => downloadReport(report)}
-                      className="flex items-center space-x-2"
-                    >
-                      <Download className="w-4 h-4" />
-                      <span>Download</span>
-                    </Button>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No reports yet</h3>
-                <p className="text-gray-500 mb-4">Generate your first marketing report to get started</p>
-                <Button
-                  onClick={() => generateReportMutation.mutate("daily")}
-                  disabled={generateReportMutation.isPending}
-                >
-                  Generate Daily Report
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => downloadReport(report)}
+                    className="flex items-center space-x-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download</span>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No reports yet</h3>
+              <p className="text-gray-500 mb-4">Generate your first marketing report to get started</p>
+              <Button
+                onClick={() => generateReportMutation.mutate("daily")}
+                disabled={generateReportMutation.isPending}
+              >
+                Generate Daily Report
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

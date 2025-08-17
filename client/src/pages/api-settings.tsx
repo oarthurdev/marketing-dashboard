@@ -160,109 +160,107 @@ export default function ApiSettings() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">API Settings</h1>
-          <p className="text-gray-600 mt-2">Configure your marketing platform integrations</p>
-        </div>
-
-        <Tabs defaultValue="hubspot" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            {Object.entries(platformConfigs).map(([platform, config]) => (
-              <TabsTrigger key={platform} value={platform} className="text-sm">
-                {config.title}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          {Object.entries(platformConfigs).map(([platform, config]) => {
-            const connection = connections?.find(c => c.platform === platform);
-            const isConnected = connection?.isConnected || false;
-
-            return (
-              <TabsContent key={platform} value={platform}>
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="flex items-center gap-2">
-                          {config.title}
-                          {isConnected ? (
-                            <Check className="w-5 h-5 text-green-500" />
-                          ) : (
-                            <AlertCircle className="w-5 h-5 text-yellow-500" />
-                          )}
-                        </CardTitle>
-                        <CardDescription>{config.description}</CardDescription>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(config.docsUrl, '_blank')}
-                      >
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        Documentation
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id={`${platform}-enabled`}
-                        checked={isConnected}
-                        disabled
-                      />
-                      <Label htmlFor={`${platform}-enabled`}>
-                        {isConnected ? "Connected" : "Not Connected"}
-                      </Label>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {config.fields.map((field) => (
-                        <div key={field.key} className="space-y-2">
-                          <Label htmlFor={`${platform}-${field.key}`}>
-                            {field.label}
-                          </Label>
-                          <Input
-                            id={`${platform}-${field.key}`}
-                            type={field.type}
-                            placeholder={field.placeholder}
-                            value={configs[platform]?.[field.key] || ''}
-                            onChange={(e) => handleConfigChange(platform, field.key, e.target.value)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex space-x-2 pt-4">
-                      <Button
-                        onClick={() => handleSave(platform)}
-                        disabled={updateConnectionMutation.isPending}
-                      >
-                        {updateConnectionMutation.isPending ? "Saving..." : "Save Configuration"}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleTest(platform)}
-                        disabled={testConnectionMutation.isPending || !isConnected}
-                      >
-                        {testConnectionMutation.isPending ? "Testing..." : "Test Connection"}
-                      </Button>
-                    </div>
-
-                    {connection?.lastSync && (
-                      <p className="text-sm text-gray-500">
-                        Last synced: {new Date(connection.lastSync).toLocaleString()}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            );
-          })}
-        </Tabs>
+    <div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">API Settings</h1>
+        <p className="text-gray-600 mt-2">Configure your marketing platform integrations</p>
       </div>
+
+      <Tabs defaultValue="hubspot" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5">
+          {Object.entries(platformConfigs).map(([platform, config]) => (
+            <TabsTrigger key={platform} value={platform} className="text-sm">
+              {config.title}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {Object.entries(platformConfigs).map(([platform, config]) => {
+          const connection = connections?.find(c => c.platform === platform);
+          const isConnected = connection?.isConnected || false;
+
+          return (
+            <TabsContent key={platform} value={platform}>
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        {config.title}
+                        {isConnected ? (
+                          <Check className="w-5 h-5 text-green-500" />
+                        ) : (
+                          <AlertCircle className="w-5 h-5 text-yellow-500" />
+                        )}
+                      </CardTitle>
+                      <CardDescription>{config.description}</CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(config.docsUrl, '_blank')}
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Documentation
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id={`${platform}-enabled`}
+                      checked={isConnected}
+                      disabled
+                    />
+                    <Label htmlFor={`${platform}-enabled`}>
+                      {isConnected ? "Connected" : "Not Connected"}
+                    </Label>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {config.fields.map((field) => (
+                      <div key={field.key} className="space-y-2">
+                        <Label htmlFor={`${platform}-${field.key}`}>
+                          {field.label}
+                        </Label>
+                        <Input
+                          id={`${platform}-${field.key}`}
+                          type={field.type}
+                          placeholder={field.placeholder}
+                          value={configs[platform]?.[field.key] || ''}
+                          onChange={(e) => handleConfigChange(platform, field.key, e.target.value)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex space-x-2 pt-4">
+                    <Button
+                      onClick={() => handleSave(platform)}
+                      disabled={updateConnectionMutation.isPending}
+                    >
+                      {updateConnectionMutation.isPending ? "Saving..." : "Save Configuration"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleTest(platform)}
+                      disabled={testConnectionMutation.isPending || !isConnected}
+                    >
+                      {testConnectionMutation.isPending ? "Testing..." : "Test Connection"}
+                    </Button>
+                  </div>
+
+                  {connection?.lastSync && (
+                    <p className="text-sm text-gray-500">
+                      Last synced: {new Date(connection.lastSync).toLocaleString()}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          );
+        })}
+      </Tabs>
     </div>
   );
 }
