@@ -1,4 +1,5 @@
 
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Search, Filter, Download, RefreshCw, Eye, Calendar, User, Mail, Phone, Tag, DollarSign, Clock } from "lucide-react";
-import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Lead {
@@ -26,7 +26,7 @@ interface Lead {
   customFields?: any[];
 }
 
-export default function Leads() {
+const Leads: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
@@ -34,7 +34,7 @@ export default function Leads() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const { toast } = useToast();
 
-  // Mock data - in real app this would come from API
+  // Mock data fallback
   const mockLeads: Lead[] = [
     {
       id: "1",
@@ -80,29 +80,48 @@ export default function Leads() {
   ];
 
   // Check Kommo status
-  const { data: kommoStatus } = useQuery({
-    queryKey: ['/api/kommo/status'],
+  const { data: kommoStatus, isLoading: statusLoading } = useQuery({
+    queryKey: ['kommo-status'],
     queryFn: async () => {
-      const response = await fetch('/api/kommo/status');
-      if (!response.ok) throw new Error('Failed to check Kommo status');
-      return response.json();
+      try {
+        const response = await fetch('/api/kommo/status');
+        if (!response.ok) throw new Error('Failed to check Kommo status');
+        return response.json();
+      } catch (error) {
+        console.error('Error checking Kommo status:', error);
+        return { isConnected: false, isConfigured: false };
+      }
     },
   });
 
-  // Fetch leads data - use Kommo if available, otherwise mock data
-  const { data: allLeads = mockLeads, isLoading } = useQuery({
-    queryKey: ['/api/leads', kommoStatus?.isConnected],
+  // Fetch leads data
+  const { data: allLeads = [], isLoading: leadsLoading, error: leadsError } = useQuery({
+    queryKey: ['leads', kommoStatus?.isConnected],
     queryFn: async () => {
-      if (kommoStatus?.isConnected) {
-        const response = await fetch('/api/kommo/leads');
-        if (response.ok) {
-          return await response.json();
+      try {
+        if (kommoStatus?.isConnected) {
+          console.log('Fetching leads from Kommo...');
+          const response = await fetch('/api/kommo/leads');
+          if (response.ok) {
+            const data = await response.json();
+            console.log('Kommo leads received:', data);
+            return Array.isArray(data) ? data : [];
+          } else {
+            console.warn('Failed to fetch from Kommo, using mock data');
+            return mockLeads;
+          }
         }
+        console.log('Kommo not connected, using mock data');
+        return mockLeads;
+      } catch (error) {
+        console.error('Error fetching leads:', error);
+        return mockLeads;
       }
-      return mockLeads;
     },
     enabled: !!kommoStatus,
   });
+
+  const isLoading = statusLoading || leadsLoading;
 
   // Filter leads by period
   const filteredLeadsByPeriod = allLeads.filter((lead: Lead) => {
@@ -151,10 +170,7 @@ export default function Leads() {
   };
 
   const handleRefresh = () => {
-    toast({
-      title: "Dados atualizados",
-      description: "A lista de leads foi atualizada com sucesso.",
-    });
+    window.location.reload();
   };
 
   const LeadDetailDialog = ({ lead }: { lead: Lead }) => (
@@ -258,6 +274,16 @@ export default function Leads() {
     </DialogContent>
   );
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Carregando leads...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -271,6 +297,14 @@ export default function Leads() {
                 Dados do Kommo CRM
               </span>
             )}
+          </p>
+          {leadsError && (
+            <p className="text-red-500 text-sm mt-1">
+              Erro ao carregar dados. Exibindo dados de exemplo.
+            </p>
+          )}
+          <p className="text-xs text-gray-400 mt-1">
+            Total de leads carregados: {allLeads.length}
           </p>
         </div>
         <div className="flex items-center space-x-3">
@@ -396,61 +430,77 @@ export default function Leads() {
           <CardTitle>Lista de Leads</CardTitle>
           <CardDescription>
             {filteredLeads.length} leads encontrados
+            {allLeads.length > 0 && (
+              <span className="ml-2 text-green-600">
+                • {allLeads.length} leads carregados
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Telefone</TableHead>
-                <TableHead>Fonte</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Criado em</TableHead>
-                <TableHead>Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredLeads.map((lead) => (
-                <TableRow key={lead.id}>
-                  <TableCell className="font-medium">{lead.name}</TableCell>
-                  <TableCell>{lead.email}</TableCell>
-                  <TableCell>{lead.phone || '-'}</TableCell>
-                  <TableCell>{lead.source}</TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(lead.status)}>
-                      {getStatusText(lead.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {lead.value ? `R$ ${lead.value.toLocaleString()}` : '-'}
-                  </TableCell>
-                  <TableCell>
-                    {new Date(lead.createdAt).toLocaleDateString('pt-BR')}
-                  </TableCell>
-                  <TableCell>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setSelectedLead(lead)}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          Ver
-                        </Button>
-                      </DialogTrigger>
-                      {selectedLead && <LeadDetailDialog lead={selectedLead} />}
-                    </Dialog>
-                  </TableCell>
+          {filteredLeads.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">Nenhum lead encontrado com os filtros aplicados.</p>
+              <p className="text-sm text-gray-400 mt-2">
+                Total de leads disponíveis: {allLeads.length}
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Telefone</TableHead>
+                  <TableHead>Fonte</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Criado em</TableHead>
+                  <TableHead>Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredLeads.map((lead) => (
+                  <TableRow key={lead.id}>
+                    <TableCell className="font-medium">{lead.name}</TableCell>
+                    <TableCell>{lead.email}</TableCell>
+                    <TableCell>{lead.phone || '-'}</TableCell>
+                    <TableCell>{lead.source}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(lead.status)}>
+                        {getStatusText(lead.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {lead.value ? `R$ ${lead.value.toLocaleString()}` : '-'}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(lead.createdAt).toLocaleDateString('pt-BR')}
+                    </TableCell>
+                    <TableCell>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setSelectedLead(lead)}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            Ver
+                          </Button>
+                        </DialogTrigger>
+                        {selectedLead && <LeadDetailDialog lead={selectedLead} />}
+                      </Dialog>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
   );
-}
+};
+
+export default Leads;
