@@ -43,15 +43,13 @@ export default function Sidebar({ connections }: SidebarProps) {
 
       <nav className="mt-6 px-3" data-testid="nav-main">
         <div className="space-y-2">
-          <Link href="/dashboard">
-            <span className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
-              isActive('/dashboard') || isActive('/')
-                ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-            }`}>
-              <BarChart3 className="w-5 h-5 mr-3" />
-              Dashboard
-            </span>
+          <Link href="/dashboard" className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
+            isActive('/dashboard') || isActive('/')
+              ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+          }`}>
+            <BarChart3 className="w-5 h-5 mr-3" />
+            Dashboard
           </Link>
 
           <a
@@ -78,15 +76,13 @@ export default function Sidebar({ connections }: SidebarProps) {
             Campaigns
           </a>
 
-          <Link href="/reports">
-            <span className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
-              isActive('/reports')
-                ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-            }`}>
-              <FileText className="w-5 h-5 mr-3" />
-              Reports
-            </span>
+          <Link href="/reports" className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
+            isActive('/reports')
+              ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+          }`}>
+            <FileText className="w-5 h-5 mr-3" />
+            Reports
           </Link>
         </div>
 
@@ -124,15 +120,13 @@ export default function Sidebar({ connections }: SidebarProps) {
 
         {/* Settings Section */}
         <div className="mt-8 pt-6 border-t border-gray-200">
-          <Link href="/api-settings">
-            <span className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
-              isActive('/api-settings')
-                ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-            }`}>
-              <Settings className="w-5 h-5 mr-3" />
-              API Settings
-            </span>
+          <Link href="/api-settings" className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
+            isActive('/api-settings')
+              ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+          }`}>
+            <Settings className="w-5 h-5 mr-3" />
+            API Settings
           </Link>
 
           <a
