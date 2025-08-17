@@ -31,15 +31,16 @@ export default function ApiSettings() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/connections'] });
+      const platformName = platformConfigs[variables.platform]?.title || variables.platform;
       toast({
-        title: "Settings Updated",
-        description: `${variables.platform} configuration has been updated successfully.`,
+        title: "✅ Configuration Saved",
+        description: `${platformName} settings have been saved successfully. The connection is now ${variables.isConnected ? 'active' : 'inactive'}.`,
       });
     },
     onError: (error) => {
       toast({
-        title: "Update Failed",
-        description: `Failed to update API configuration: ${error.message}`,
+        title: "❌ Save Failed",
+        description: `Failed to save configuration: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -86,10 +87,28 @@ export default function ApiSettings() {
 
   const handleSave = async (platform: string) => {
     const connection = connections?.find(c => c.platform === platform);
-    if (!connection) return;
+    if (!connection) {
+      toast({
+        title: "Error",
+        description: "Connection not found for this platform.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const config = configs[platform] || {};
-    const isConnected = Object.values(config).some(value => value.trim() !== '');
+    const configValues = Object.values(config).filter(value => value && value.trim() !== '');
+    
+    if (configValues.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in at least one configuration field before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const isConnected = configValues.length > 0;
 
     updateConnectionMutation.mutate({ platform, config, isConnected });
   };
@@ -227,35 +246,60 @@ export default function ApiSettings() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {config.fields.map((field) => (
-                      <div key={field.key} className="space-y-2">
-                        <Label htmlFor={`${platform}-${field.key}`}>
-                          {field.label}
-                        </Label>
-                        <Input
-                          id={`${platform}-${field.key}`}
-                          type={field.type}
-                          placeholder={field.placeholder}
-                          value={configs[platform]?.[field.key] || ''}
-                          onChange={(e) => handleConfigChange(platform, field.key, e.target.value)}
-                        />
-                      </div>
-                    ))}
+                    {config.fields.map((field) => {
+                      const fieldValue = configs[platform]?.[field.key] || '';
+                      const hasValue = fieldValue.trim() !== '';
+                      
+                      return (
+                        <div key={field.key} className="space-y-2">
+                          <Label htmlFor={`${platform}-${field.key}`} className="flex items-center gap-2">
+                            {field.label}
+                            {hasValue && (
+                              <Check className="w-4 h-4 text-green-500" />
+                            )}
+                          </Label>
+                          <Input
+                            id={`${platform}-${field.key}`}
+                            type={field.type}
+                            placeholder={field.placeholder}
+                            value={fieldValue}
+                            onChange={(e) => handleConfigChange(platform, field.key, e.target.value)}
+                            className={hasValue ? "border-green-200 bg-green-50" : ""}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <div className="flex space-x-2 pt-4">
                     <Button
                       onClick={() => handleSave(platform)}
                       disabled={updateConnectionMutation.isPending}
+                      className="min-w-[150px]"
                     >
-                      {updateConnectionMutation.isPending ? "Saving..." : "Save Configuration"}
+                      {updateConnectionMutation.isPending ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Saving...
+                        </>
+                      ) : (
+                        "Save Configuration"
+                      )}
                     </Button>
                     <Button
                       variant="outline"
                       onClick={() => handleTest(platform)}
                       disabled={testConnectionMutation.isPending || !isConnected}
+                      className="min-w-[130px]"
                     >
-                      {testConnectionMutation.isPending ? "Testing..." : "Test Connection"}
+                      {testConnectionMutation.isPending ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Testing...
+                        </>
+                      ) : (
+                        "Test Connection"
+                      )}
                     </Button>
                   </div>
 
