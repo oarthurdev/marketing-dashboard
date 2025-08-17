@@ -1,3 +1,5 @@
+
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,11 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Search, Filter, Download, RefreshCw, Play, Pause, TrendingUp, Target, DollarSign, Users } from "lucide-react";
-import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { Campaign } from "@shared/schema";
 
-// Mock data fallback
+export default function Campaigns() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [platformFilter, setPlatformFilter] = useState("all");
+  const { toast } = useToast();
+
+  // Mock data fallback
   const mockCampaigns: Campaign[] = [
     {
       id: '1',
