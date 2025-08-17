@@ -1,7 +1,6 @@
 import { BarChart3, Users, ShoppingCart, Megaphone, FileText, Settings, HelpCircle } from "lucide-react";
 import type { ApiConnection } from "@shared/schema";
-import Link from "next/link";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "wouter";
 
 interface SidebarProps {
   connections: ApiConnection[];
@@ -47,14 +46,14 @@ export default function Sidebar({ connections }: SidebarProps) {
           <nav className="mt-8">
             <div className="space-y-2">
               <Link href="/dashboard">
-                <a className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
+                <span className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
                   isActive('/dashboard') || isActive('/')
                     ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                 }`}>
                   <BarChart3 className="w-5 h-5 mr-3" />
                   Dashboard
-                </a>
+                </span>
               </Link>
 
               <a
@@ -82,14 +81,14 @@ export default function Sidebar({ connections }: SidebarProps) {
               </a>
 
               <Link href="/reports">
-                <a className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
+                <span className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
                   isActive('/reports')
                     ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                 }`}>
                   <FileText className="w-5 h-5 mr-3" />
                   Reports
-                </a>
+                </span>
               </Link>
             </div>
           </nav>
@@ -131,14 +130,14 @@ export default function Sidebar({ connections }: SidebarProps) {
       {/* Settings Section */}
       <div className="mt-auto pt-6 border-t border-gray-200">
         <Link href="/api-settings">
-          <a className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
+          <span className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
             isActive('/api-settings')
               ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
               : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
           }`}>
             <Settings className="w-5 h-5 mr-3" />
             API Settings
-          </a>
+          </span>
         </Link>
 
         <a
