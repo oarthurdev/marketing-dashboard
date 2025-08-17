@@ -201,13 +201,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reportContent = await reportGenerator.generateDailyReport();
       }
 
-      res.json({
-        message: 'Report generated successfully',
-        content: reportContent
+      const report = await storage.createReport({
+        title: `${type.charAt(0).toUpperCase() + type.slice(1)} Marketing Report`,
+        type: type,
+        format: 'html',
+        data: { generated: true, type }
       });
+
+      res.json({ content: reportContent, report });
     } catch (error) {
       console.error('Error generating report:', error);
-      res.status(500).json({ message: 'Failed to generate report' });
+      res.status(500).json({ error: 'Failed to generate report' });
+    }
+  });
+
+  // Kommo-specific endpoints
+  app.get('/api/kommo/leads', async (req, res) => {
+    try {
+      const { KommoService } = await import('./services/kommo.js');
+      const kommoService = new KommoService();
+
+      if (!kommoService.isConfigured()) {
+        return res.status(400).json({ error: 'Kommo not configured' });
+      }
+
+      const leads = await kommoService.getDetailedLeads();
+      res.json(leads);
+    } catch (error) {
+      console.error('Error fetching Kommo leads:', error);
+      res.status(500).json({ error: 'Failed to fetch Kommo leads' });
+    }
+  });
+
+  app.get('/api/kommo/sales', async (req, res) => {
+    try {
+      const { KommoService } = await import('./services/kommo.js');
+      const kommoService = new KommoService();
+
+      if (!kommoService.isConfigured()) {
+        return res.status(400).json({ error: 'Kommo not configured' });
+      }
+
+      const sales = await kommoService.getDetailedSales();
+      res.json(sales);
+    } catch (error) {
+      console.error('Error fetching Kommo sales:', error);
+      res.status(500).json({ error: 'Failed to fetch Kommo sales' });
+    }
+  });
+
+  app.get('/api/kommo/status', async (req, res) => {
+    try {
+      const { KommoService } = await import('./services/kommo.js');
+      const kommoService = new KommoService();
+
+      const isConfigured = kommoService.isConfigured();
+      let isConnected = false;
+
+      if (isConfigured) {
+        isConnected = await kommoService.testConnection();
+      }
+
+      res.json({ isConfigured, isConnected });
+    } catch (error) {
+      console.error('Error checking Kommo status:', error);
+      res.status(500).json({ error: 'Failed to check Kommo status' });
     }
   });
 

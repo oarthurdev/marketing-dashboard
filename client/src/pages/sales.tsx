@@ -91,9 +91,37 @@ export default function Sales() {
     }
   ];
 
+  // Check Kommo status
+  const { data: kommoStatus } = useQuery({
+    queryKey: ['/api/kommo/status'],
+    queryFn: async () => {
+      const response = await fetch('/api/kommo/status');
+      if (!response.ok) throw new Error('Failed to check Kommo status');
+      return response.json();
+    },
+  });
+
+  // Fetch sales data - use Kommo if available, otherwise mock data
   const { data: sales = mockSales, isLoading } = useQuery({
-    queryKey: ['/api/sales', periodFilter],
-    queryFn: () => Promise.resolve(mockSales),
+    queryKey: ['/api/sales', periodFilter, kommoStatus?.isConnected],
+    queryFn: async () => {
+      if (kommoStatus?.isConnected) {
+        const response = await fetch('/api/kommo/sales');
+        if (response.ok) {
+          const kommoSales = await response.json();
+          // Filter by period if needed
+          const now = new Date();
+          const periodDays = parseInt(periodFilter);
+          const cutoffDate = new Date(now.getTime() - (periodDays * 24 * 60 * 60 * 1000));
+          
+          return kommoSales.filter((sale: any) => 
+            new Date(sale.createdAt) >= cutoffDate
+          );
+        }
+      }
+      return mockSales;
+    },
+    enabled: !!kommoStatus,
   });
 
   const getStatusColor = (status: Sale['status']) => {
@@ -160,7 +188,14 @@ export default function Sales() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Vendas</h1>
-          <p className="text-gray-500">Acompanhe suas vendas e receitas</p>
+          <p className="text-gray-500">
+            Acompanhe suas vendas e receitas
+            {kommoStatus?.isConnected && (
+              <span className="ml-2 inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
+                Dados do Kommo CRM
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex items-center space-x-3">
           <Select value={periodFilter} onValueChange={setPeriodFilter}>

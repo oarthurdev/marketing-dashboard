@@ -292,6 +292,15 @@ export class DataProcessor {
     return !!(process.env.KOMMO_ACCESS_TOKEN && process.env.KOMMO_SUBDOMAIN);
   }
 
+  async isKommoConnected(): Promise<boolean> {
+    try {
+      if (!this.isKommoConfigured()) return false;
+      return await this.kommo.testConnection();
+    } catch (error) {
+      return false;
+    }
+  }
+
   private async consolidateMetrics(
     hubspotResult: PromiseSettledResult<any>,
     googleAdsResult: PromiseSettledResult<any>,
@@ -307,9 +316,43 @@ export class DataProcessor {
     const tiktokAdsData = tiktokAdsResult.status === 'fulfilled' ? tiktokAdsResult.value : { leads: 0, spend: 0 };
     const kommoData = kommoResult.status === 'fulfilled' ? kommoResult.value : { leadsToday: 0, revenueToday: 0 };
 
-    // Aggregate totals
-    const totalLeads = hubspotData.leadsToday + googleAdsData.leads + metaAdsData.leads + tiktokAdsData.leads + kommoData.leadsToday;
-    const totalRevenue = hubspotData.revenueToday + shopifyData.revenue + kommoData.revenueToday;
+    // Check if Kommo is connected
+    const isKommoConnected = await this.isKommoConnected();
+
+    let totalLeads, totalRevenue, leadSources;
+
+    if (isKommoConnected && kommoData.leadsToday > 0) {
+      // If Kommo is connected and has data, prioritize Kommo data
+      totalLeads = kommoData.leadsToday;
+      totalRevenue = kommoData.revenueToday;
+      
+      leadSources = {
+        'Kommo CRM': kommoData.leadsToday,
+        'Google Ads': 0,
+        'Meta Ads': 0,
+        'TikTok Ads': 0,
+        'HubSpot CRM': 0,
+        'Organic': 0,
+        'Email': 0,
+        'Social': 0,
+      };
+    } else {
+      // Use all sources data
+      totalLeads = hubspotData.leadsToday + googleAdsData.leads + metaAdsData.leads + tiktokAdsData.leads + kommoData.leadsToday;
+      totalRevenue = hubspotData.revenueToday + shopifyData.revenue + kommoData.revenueToday;
+      
+      leadSources = {
+        'HubSpot CRM': hubspotData.leadsToday,
+        'Google Ads': googleAdsData.leads,
+        'Meta Ads': metaAdsData.leads,
+        'TikTok Ads': tiktokAdsData.leads,
+        'Kommo CRM': kommoData.leadsToday,
+        'Organic': Math.floor(totalLeads * 0.15),
+        'Email': Math.floor(totalLeads * 0.10),
+        'Social': Math.floor(totalLeads * 0.05),
+      };
+    }
+
     const totalSpend = googleAdsData.spend + metaAdsData.spend + tiktokAdsData.spend;
 
     // Calculate conversion rate (orders / leads)
@@ -317,18 +360,6 @@ export class DataProcessor {
 
     // Calculate average CPA
     const avgCPA = totalLeads > 0 ? totalSpend / totalLeads : googleAdsData.cpa;
-
-    // Lead sources breakdown
-    const leadSources = {
-      'HubSpot CRM': hubspotData.leadsToday,
-      'Google Ads': googleAdsData.leads,
-      'Meta Ads': metaAdsData.leads,
-      'TikTok Ads': tiktokAdsData.leads,
-      'Kommo CRM': kommoData.leadsToday,
-      'Organic': Math.floor(totalLeads * 0.15), // Estimated organic traffic
-      'Email': Math.floor(totalLeads * 0.10), // Estimated email leads
-      'Social': Math.floor(totalLeads * 0.05), // Estimated other social leads
-    };
 
     const metrics: InsertMetrics = {
       date: new Date(),

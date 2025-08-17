@@ -73,9 +73,29 @@ export default function Leads() {
     }
   ];
 
+  // Check Kommo status
+  const { data: kommoStatus } = useQuery({
+    queryKey: ['/api/kommo/status'],
+    queryFn: async () => {
+      const response = await fetch('/api/kommo/status');
+      if (!response.ok) throw new Error('Failed to check Kommo status');
+      return response.json();
+    },
+  });
+
+  // Fetch leads data - use Kommo if available, otherwise mock data
   const { data: leads = mockLeads, isLoading } = useQuery({
-    queryKey: ['/api/leads'],
-    queryFn: () => Promise.resolve(mockLeads),
+    queryKey: ['/api/leads', kommoStatus?.isConnected],
+    queryFn: async () => {
+      if (kommoStatus?.isConnected) {
+        const response = await fetch('/api/kommo/leads');
+        if (response.ok) {
+          return await response.json();
+        }
+      }
+      return mockLeads;
+    },
+    enabled: !!kommoStatus,
   });
 
   const getStatusColor = (status: Lead['status']) => {
@@ -129,7 +149,14 @@ export default function Leads() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
-          <p className="text-gray-500">Gerencie seus leads e oportunidades</p>
+          <p className="text-gray-500">
+            Gerencie seus leads e oportunidades
+            {kommoStatus?.isConnected && (
+              <span className="ml-2 inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
+                Dados do Kommo CRM
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex items-center space-x-3">
           <Button variant="outline" onClick={handleExport}>

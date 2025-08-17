@@ -162,4 +162,97 @@ export class KommoService {
       return false;
     }
   }
+
+  async getDetailedLeads(): Promise<any[]> {
+    try {
+      const leads = await this.getLeads(250);
+      const contacts = await this.getContacts(250);
+      
+      // Create a map of contact IDs to contact info
+      const contactMap = new Map();
+      contacts.forEach(contact => {
+        contactMap.set(contact.id, contact);
+      });
+
+      return leads.map(lead => {
+        const contact = contactMap.get(lead.id) || {};
+        return {
+          id: lead.id.toString(),
+          name: lead.name || contact.name || 'Lead sem nome',
+          email: contact.custom_fields_values?.find(field => field.field_code === 'EMAIL')?.values?.[0]?.value || '',
+          phone: contact.custom_fields_values?.find(field => field.field_code === 'PHONE')?.values?.[0]?.value || '',
+          source: 'Kommo CRM',
+          status: this.getLeadStatus(lead.status_id),
+          value: lead.price || 0,
+          createdAt: new Date(lead.created_at * 1000).toISOString(),
+          lastActivity: lead.updated_at ? `Atualizado em ${new Date(lead.updated_at * 1000).toLocaleDateString('pt-BR')}` : ''
+        };
+      });
+    } catch (error) {
+      console.error('Error getting detailed leads from Kommo:', error);
+      return [];
+    }
+  }
+
+  async getDetailedSales(): Promise<any[]> {
+    try {
+      const leads = await this.getLeads(250);
+      const contacts = await this.getContacts(250);
+      
+      // Create a map of contact IDs to contact info
+      const contactMap = new Map();
+      contacts.forEach(contact => {
+        contactMap.set(contact.id, contact);
+      });
+
+      // Filter only closed/won leads
+      const wonLeads = leads.filter(lead => 
+        lead.closed_at && (lead.status_id === 142 || lead.status_id === 143)
+      );
+
+      return wonLeads.map(lead => {
+        const contact = contactMap.get(lead.id) || {};
+        return {
+          id: lead.id.toString(),
+          customerName: lead.name || contact.name || 'Cliente sem nome',
+          customerEmail: contact.custom_fields_values?.find(field => field.field_code === 'EMAIL')?.values?.[0]?.value || '',
+          product: 'Produto/Serviço', // Kommo doesn't have specific product info
+          value: lead.price || 0,
+          status: 'completed',
+          paymentMethod: 'not_specified',
+          source: 'Kommo CRM',
+          createdAt: new Date(lead.created_at * 1000).toISOString(),
+          completedAt: lead.closed_at ? new Date(lead.closed_at * 1000).toISOString() : undefined
+        };
+      });
+    } catch (error) {
+      console.error('Error getting detailed sales from Kommo:', error);
+      return [];
+    }
+  }
+
+  private getLeadStatus(statusId: number): string {
+    // Common Kommo status IDs mapping
+    switch (statusId) {
+      case 28617499: // New
+      case 28617502: // First contact
+        return 'new';
+      case 28617505: // Negotiation
+      case 28617508: // Preparing proposal
+        return 'contacted';
+      case 28617511: // Decision making
+        return 'qualified';
+      case 142: // Won
+      case 143: // Won
+        return 'converted';
+      case 144: // Lost
+        return 'lost';
+      default:
+        return 'new';
+    }
+  }
+
+  isConfigured(): boolean {
+    return !!(this.accessToken && this.subdomain);
+  }
 }
