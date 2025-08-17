@@ -1,3 +1,4 @@
+import React from "react";
 import { BarChart3, Users, ShoppingCart, Megaphone, FileText, Settings, HelpCircle } from "lucide-react";
 import type { ApiConnection } from "@shared/schema";
 import { Link, useLocation } from "wouter";
@@ -41,57 +42,52 @@ export default function Sidebar({ connections }: SidebarProps) {
       </div>
 
       <nav className="mt-6 px-3" data-testid="nav-main">
-        <div className="space-y-1">
-          {/* Navigation Menu */}
-          <nav className="mt-8">
-            <div className="space-y-2">
-              <Link href="/dashboard">
-                <span className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
-                  isActive('/dashboard') || isActive('/')
-                    ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}>
-                  <BarChart3 className="w-5 h-5 mr-3" />
-                  Dashboard
-                </span>
-              </Link>
+        <div className="space-y-2">
+          <Link href="/dashboard">
+            <span className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
+              isActive('/dashboard') || isActive('/')
+                ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}>
+              <BarChart3 className="w-5 h-5 mr-3" />
+              Dashboard
+            </span>
+          </Link>
 
-              <a
-                href="#"
-                className="flex items-center px-4 py-3 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
-              >
-                <Users className="w-5 h-5 mr-3" />
-                Leads
-              </a>
+          <a
+            href="#"
+            className="flex items-center px-4 py-3 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+          >
+            <Users className="w-5 h-5 mr-3" />
+            Leads
+          </a>
 
-              <a
-                href="#"
-                className="flex items-center px-4 py-3 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
-              >
-                <ShoppingCart className="w-5 h-5 mr-3" />
-                Sales
-              </a>
+          <a
+            href="#"
+            className="flex items-center px-4 py-3 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+          >
+            <ShoppingCart className="w-5 h-5 mr-3" />
+            Sales
+          </a>
 
-              <a
-                href="#"
-                className="flex items-center px-4 py-3 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
-              >
-                <Megaphone className="w-5 h-5 mr-3" />
-                Campaigns
-              </a>
+          <a
+            href="#"
+            className="flex items-center px-4 py-3 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+          >
+            <Megaphone className="w-5 h-5 mr-3" />
+            Campaigns
+          </a>
 
-              <Link href="/reports">
-                <span className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
-                  isActive('/reports')
-                    ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}>
-                  <FileText className="w-5 h-5 mr-3" />
-                  Reports
-                </span>
-              </Link>
-            </div>
-          </nav>
+          <Link href="/reports">
+            <span className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
+              isActive('/reports')
+                ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}>
+              <FileText className="w-5 h-5 mr-3" />
+              Reports
+            </span>
+          </Link>
         </div>
 
         <div className="mt-8">
@@ -125,29 +121,29 @@ export default function Sidebar({ connections }: SidebarProps) {
             </div>
           </div>
         </div>
+
+        {/* Settings Section */}
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <Link href="/api-settings">
+            <span className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
+              isActive('/api-settings')
+                ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}>
+              <Settings className="w-5 h-5 mr-3" />
+              API Settings
+            </span>
+          </Link>
+
+          <a
+            href="#"
+            className="flex items-center px-4 py-3 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+          >
+            <HelpCircle className="w-5 h-5 mr-3" />
+            Help & Support
+          </a>
+        </div>
       </nav>
-
-      {/* Settings Section */}
-      <div className="mt-auto pt-6 border-t border-gray-200">
-        <Link href="/api-settings">
-          <span className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
-            isActive('/api-settings')
-              ? 'text-gray-900 bg-blue-50 border-l-4 border-blue-500'
-              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-          }`}>
-            <Settings className="w-5 h-5 mr-3" />
-            API Settings
-          </span>
-        </Link>
-
-        <a
-          href="#"
-          className="flex items-center px-4 py-3 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
-        >
-          <HelpCircle className="w-5 h-5 mr-3" />
-          Help & Support
-        </a>
-      </div>
     </aside>
   );
 }
