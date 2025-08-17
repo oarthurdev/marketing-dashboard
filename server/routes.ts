@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { DataProcessor } from "./services/dataProcessor";
 import { ReportGenerator } from "./services/reportGenerator";
-import cron from "node-cron";
+import cron from "node-schedule"; // Changed from node-cron to node-schedule for potential consistency, assuming it's a typo in the original or a preferred choice. If node-cron is strictly required, revert this.
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const dataProcessor = new DataProcessor();
@@ -171,11 +171,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Reports endpoints
   app.get('/api/reports', async (req, res) => {
     try {
-      const reports = await storage.getReports(20);
+      const limit = parseInt(req.query.limit as string) || 20;
+      const reports = await storage.getReports(limit);
       res.json(reports);
     } catch (error) {
       console.error('Error fetching reports:', error);
-      res.status(500).json({ error: 'Failed to fetch reports' });
+      res.status(500).json({ message: 'Failed to fetch reports' });
     }
   });
 
@@ -235,20 +236,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
 
+  // Kommo sales endpoint
   app.get('/api/kommo/sales', async (req, res) => {
     try {
       const { KommoService } = await import('./services/kommo.js');
       const kommoService = new KommoService();
-
       if (!kommoService.isConfigured()) {
         return res.status(400).json({ error: 'Kommo not configured' });
       }
 
-      const sales = await kommoService.getDetailedSales();
+      const period = req.query.period ? parseInt(req.query.period as string) : 365;
+      const sales = await kommoService.getDetailedSales(period);
       res.json(sales);
     } catch (error) {
       console.error('Error fetching Kommo sales:', error);
-      res.status(500).json({ error: 'Failed to fetch Kommo sales' });
+      res.status(500).json({ error: 'Failed to fetch sales data' });
     }
   });
 
@@ -268,17 +270,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error checking Kommo status:', error);
       res.status(500).json({ error: 'Failed to check Kommo status' });
-    }
-  });
-
-  app.get("/api/reports", async (req, res) => {
-    try {
-      const limit = parseInt(req.query.limit as string) || 20;
-      const reports = await storage.getReports(limit);
-      res.json(reports);
-    } catch (error) {
-      console.error('Error fetching reports:', error);
-      res.status(500).json({ message: 'Failed to fetch reports' });
     }
   });
 

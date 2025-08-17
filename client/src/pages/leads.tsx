@@ -18,6 +18,7 @@ interface Lead {
   phone?: string;
   source: string;
   status: 'new' | 'contacted' | 'qualified' | 'lost' | 'converted';
+  statusId?: number;
   value?: number;
   createdAt: string;
   lastActivity?: string;
@@ -362,7 +363,7 @@ const Leads: React.FC = () => {
             <CardTitle className="text-sm font-medium">Convertidos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{filteredLeadsByPeriod.filter(l => l.status === 'converted').length}</div>
+            <div className="text-2xl font-bold">{filteredLeadsByPeriod.filter(l => l.status === 'converted' || l.statusId === 142).length}</div>
             <p className="text-xs text-muted-foreground">Últimos {periodFilter} dias</p>
           </CardContent>
         </Card>

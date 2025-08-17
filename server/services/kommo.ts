@@ -136,10 +136,10 @@ export class KommoService {
 
       const leads = await this.getLeads(250, today);
       
-      // Status ID 142 is typically "closed won" in Kommo, but this may vary by account
+      // Status ID 142 is the primary "closed won" status in Kommo
       const wonLeadsToday = leads.filter(lead => {
         return lead.closed_at && lead.closed_at >= todayTimestamp && 
-               (lead.status_id === 142 || lead.status_id === 143); // Common won status IDs
+               lead.status_id === 142; // Primary conversion status
       });
 
       const revenue = wonLeadsToday.reduce((total, lead) => {
@@ -239,6 +239,7 @@ export class KommoService {
           phone: phone,
           source: 'Kommo CRM',
           status: this.getLeadStatus(lead.status_id),
+          statusId: lead.status_id,
           value: lead.price || 0,
           createdAt: new Date(lead.created_at * 1000).toISOString(),
           lastActivity: lead.updated_at ? `Atualizado em ${new Date(lead.updated_at * 1000).toLocaleDateString('pt-BR')}` : '',
@@ -253,11 +254,11 @@ export class KommoService {
     }
   }
 
-  async getDetailedSales(): Promise<any[]> {
+  async getDetailedSales(maxDaysBack: number = 365): Promise<any[]> {
     try {
-      // Get leads from the last year for sales data
+      // Calculate the cutoff date based on maxDaysBack
       const cutoffDate = new Date();
-      cutoffDate.setFullYear(cutoffDate.getFullYear() - 1);
+      cutoffDate.setDate(cutoffDate.getDate() - maxDaysBack);
       
       const leads = await this.getLeads(250, cutoffDate);
       const contacts = await this.getContacts(250, cutoffDate);
@@ -268,9 +269,9 @@ export class KommoService {
         contactMap.set(contact.id, contact);
       });
 
-      // Filter only closed/won leads
+      // Filter only closed/won leads - prioritize status_id 142 (primary conversion status)
       const wonLeads = leads.filter(lead => 
-        lead.closed_at && (lead.status_id === 142 || lead.status_id === 143)
+        lead.closed_at && lead.status_id === 142
       );
 
       return wonLeads.map(lead => {
@@ -297,6 +298,8 @@ export class KommoService {
   private getLeadStatus(statusId: number): string {
     // Common Kommo status IDs mapping
     switch (statusId) {
+      case 142: // Won/Converted - Primary conversion status
+        return 'converted';
       case 28617499: // New
       case 28617502: // First contact
         return 'new';
@@ -305,8 +308,7 @@ export class KommoService {
         return 'contacted';
       case 28617511: // Decision making
         return 'qualified';
-      case 142: // Won
-      case 143: // Won
+      case 143: // Won (alternative)
         return 'converted';
       case 144: // Lost
         return 'lost';

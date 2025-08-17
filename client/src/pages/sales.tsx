@@ -106,17 +106,10 @@ export default function Sales() {
     queryKey: ['/api/sales', periodFilter, kommoStatus?.isConnected],
     queryFn: async () => {
       if (kommoStatus?.isConnected) {
-        const response = await fetch('/api/kommo/sales');
+        const response = await fetch(`/api/kommo/sales?period=${periodFilter}`);
         if (response.ok) {
           const kommoSales = await response.json();
-          // Filter by period if needed
-          const now = new Date();
-          const periodDays = parseInt(periodFilter);
-          const cutoffDate = new Date(now.getTime() - (periodDays * 24 * 60 * 60 * 1000));
-          
-          return kommoSales.filter((sale: any) => 
-            new Date(sale.createdAt) >= cutoffDate
-          );
+          return kommoSales;
         }
       }
       return mockSales;

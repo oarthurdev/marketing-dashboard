@@ -17,16 +17,29 @@ export default function Dashboard() {
   const [dateRange, setDateRange] = useState("7");
   const { toast } = useToast();
 
+  // Check Kommo status first
+  const { data: kommoStatus } = useQuery({
+    queryKey: ['/api/kommo/status'],
+    queryFn: async () => {
+      const response = await fetch('/api/kommo/status');
+      if (!response.ok) throw new Error('Failed to check Kommo status');
+      return response.json();
+    },
+  });
+
   const { data: metrics, isLoading: metricsLoading, refetch: refetchMetrics } = useQuery<Metrics>({
-    queryKey: ['/api/dashboard/metrics'],
+    queryKey: ['/api/dashboard/metrics', kommoStatus?.isConnected],
+    enabled: !!kommoStatus,
   });
 
   const { data: campaigns, isLoading: campaignsLoading } = useQuery<Campaign[]>({
-    queryKey: ['/api/dashboard/campaigns'],
+    queryKey: ['/api/dashboard/campaigns', kommoStatus?.isConnected],
+    enabled: !!kommoStatus,
   });
 
   const { data: activities, isLoading: activitiesLoading } = useQuery<Activity[]>({
-    queryKey: ['/api/dashboard/activities'],
+    queryKey: ['/api/dashboard/activities', kommoStatus?.isConnected],
+    enabled: !!kommoStatus,
   });
 
   const { data: historicalData } = useQuery<Metrics[]>({
@@ -87,7 +100,14 @@ export default function Dashboard() {
       <header className="flex items-center justify-between mb-8" data-testid="dashboard-header">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Marketing Dashboard</h1>
-          <p className="text-gray-500">Daily performance overview</p>
+          <p className="text-gray-500">
+            Daily performance overview
+            {kommoStatus?.isConnected && (
+              <span className="ml-2 inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
+                Kommo CRM Conectado
+              </span>
+            )}
+          </p>
         </div>
         
         <div className="flex items-center space-x-4">
