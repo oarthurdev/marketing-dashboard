@@ -94,14 +94,14 @@ const Leads: React.FC = () => {
     },
   });
 
-  // Fetch leads data
-  const { data: allLeads = [], isLoading: leadsLoading, error: leadsError } = useQuery({
-    queryKey: ['leads', kommoStatus?.isConnected],
+  // Fetch leads data with period filter
+  const { data: allLeads = [], isLoading: leadsLoading, error: leadsError, refetch: refetchLeads } = useQuery({
+    queryKey: ['leads', kommoStatus?.isConnected, periodFilter],
     queryFn: async () => {
       try {
         if (kommoStatus?.isConnected) {
-          console.log('Fetching leads from Kommo...');
-          const response = await fetch('/api/kommo/leads');
+          console.log(`Fetching leads from Kommo for ${periodFilter} days...`);
+          const response = await fetch(`/api/kommo/leads?period=${periodFilter}`);
           if (response.ok) {
             const data = await response.json();
             console.log('Kommo leads received:', data);
@@ -119,17 +119,14 @@ const Leads: React.FC = () => {
       }
     },
     enabled: !!kommoStatus,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
   });
 
   const isLoading = statusLoading || leadsLoading;
 
-  // Filter leads by period
-  const filteredLeadsByPeriod = allLeads.filter((lead: Lead) => {
-    const now = new Date();
-    const periodDays = parseInt(periodFilter);
-    const cutoffDate = new Date(now.getTime() - (periodDays * 24 * 60 * 60 * 1000));
-    return new Date(lead.createdAt) >= cutoffDate;
-  });
+  // Leads are already filtered by period on the server
+  const filteredLeadsByPeriod = allLeads;
 
   const getStatusColor = (status: Lead['status']) => {
     switch (status) {
@@ -170,7 +167,11 @@ const Leads: React.FC = () => {
   };
 
   const handleRefresh = () => {
-    window.location.reload();
+    refetchLeads();
+    toast({
+      title: "Dados atualizados",
+      description: "Os leads foram sincronizados com o Kommo.",
+    });
   };
 
   const LeadDetailDialog = ({ lead }: { lead: Lead }) => (
@@ -278,7 +279,12 @@ const Leads: React.FC = () => {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-center h-64">
-          <div className="text-lg">Carregando leads...</div>
+          <div className="text-lg">
+            {kommoStatus?.isConnected ? 
+              `Sincronizando leads do Kommo (últimos ${periodFilter} dias)...` : 
+              'Carregando leads...'
+            }
+          </div>
         </div>
       </div>
     );
@@ -294,7 +300,7 @@ const Leads: React.FC = () => {
             Gerencie seus leads e oportunidades
             {kommoStatus?.isConnected && (
               <span className="ml-2 inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
-                Dados do Kommo CRM
+                Dados do Kommo CRM (últimos {periodFilter} dias)
               </span>
             )}
           </p>

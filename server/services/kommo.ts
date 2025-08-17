@@ -163,10 +163,19 @@ export class KommoService {
     }
   }
 
-  async getDetailedLeads(): Promise<any[]> {
+  async getDetailedLeads(maxDaysBack: number = 365): Promise<any[]> {
     try {
       const leads = await this.getLeads(250);
       const contacts = await this.getContacts(250);
+      
+      // Filter leads by date (up to maxDaysBack days)
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - maxDaysBack);
+      const cutoffTimestamp = Math.floor(cutoffDate.getTime() / 1000);
+      
+      const filteredLeads = leads.filter(lead => 
+        lead.created_at >= cutoffTimestamp
+      );
       
       // Create a map of contact IDs to contact info
       const contactMap = new Map();
@@ -174,7 +183,7 @@ export class KommoService {
         contactMap.set(contact.id, contact);
       });
 
-      return leads.map(lead => {
+      return filteredLeads.map(lead => {
         // Try to find the corresponding contact
         let contact = contactMap.get(lead.id);
         

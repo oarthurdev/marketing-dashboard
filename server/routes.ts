@@ -217,21 +217,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Kommo-specific endpoints
   app.get('/api/kommo/leads', async (req, res) => {
-    try {
-      const { KommoService } = await import('./services/kommo.js');
-      const kommoService = new KommoService();
+      try {
+        const { KommoService } = await import('./services/kommo.js');
+        const kommoService = new KommoService();
 
-      if (!kommoService.isConfigured()) {
-        return res.status(400).json({ error: 'Kommo not configured' });
+        if (!kommoService.isConfigured()) {
+          return res.status(503).json({ error: 'Kommo not configured' });
+        }
+
+        // Get period from query parameter, default to 365 days (1 year)
+        const periodDays = parseInt(req.query.period as string) || 365;
+        const leads = await kommoService.getDetailedLeads(periodDays);
+        res.json(leads);
+      } catch (error) {
+        console.error('Error fetching Kommo leads:', error);
+        res.status(500).json({ error: 'Failed to fetch leads' });
       }
-
-      const leads = await kommoService.getDetailedLeads();
-      res.json(leads);
-    } catch (error) {
-      console.error('Error fetching Kommo leads:', error);
-      res.status(500).json({ error: 'Failed to fetch Kommo leads' });
-    }
-  });
+    });
 
   app.get('/api/kommo/sales', async (req, res) => {
     try {
