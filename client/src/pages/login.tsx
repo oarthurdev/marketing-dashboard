@@ -1,7 +1,12 @@
-
 import React, { useState } from "react";
 import { useLocation } from "wouter";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,11 +28,13 @@ export default function Login() {
 
     try {
       // Simulação de login - substituir por API real
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       if (email === "admin@test.com" && password === "123456") {
         localStorage.setItem("authToken", "demo-token");
+        localStorage.setItem("subscriptionActive", "true");
         localStorage.setItem("userEmail", email);
+        window.dispatchEvent(new Event("auth-changed"));
         setLocation("/dashboard");
         toast({
           title: "Login realizado com sucesso!",
@@ -66,7 +73,8 @@ export default function Login() {
               </h1>
             </div>
             <p className="text-xl text-gray-600">
-              A plataforma completa para gerenciar suas campanhas de marketing digital
+              A plataforma completa para gerenciar suas campanhas de marketing
+              digital
             </p>
           </div>
 
@@ -76,8 +84,12 @@ export default function Login() {
                 <span className="text-2xl">📊</span>
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Analytics Avançado</h3>
-                <p className="text-gray-600">Métricas em tempo real de todas suas campanhas</p>
+                <h3 className="font-semibold text-gray-900">
+                  Analytics Avançado
+                </h3>
+                <p className="text-gray-600">
+                  Métricas em tempo real de todas suas campanhas
+                </p>
               </div>
             </div>
 
@@ -86,8 +98,12 @@ export default function Login() {
                 <span className="text-2xl">🎯</span>
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Integração Completa</h3>
-                <p className="text-gray-600">Google Ads, Meta Ads, TikTok e muito mais</p>
+                <h3 className="font-semibold text-gray-900">
+                  Integração Completa
+                </h3>
+                <p className="text-gray-600">
+                  Google Ads, Meta Ads, TikTok e muito mais
+                </p>
               </div>
             </div>
 
@@ -112,7 +128,9 @@ export default function Login() {
                   <TrendingUp className="w-8 h-8 text-white" />
                 </div>
               </div>
-              <CardTitle className="text-2xl font-bold">Entrar na sua conta</CardTitle>
+              <CardTitle className="text-2xl font-bold">
+                Entrar na sua conta
+              </CardTitle>
               <CardDescription className="text-gray-600">
                 Entre com suas credenciais para acessar o dashboard
               </CardDescription>
@@ -154,7 +172,11 @@ export default function Login() {
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
                     >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
                     </button>
                   </div>
                 </div>

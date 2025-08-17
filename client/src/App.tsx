@@ -1,6 +1,9 @@
-
 import React from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Router, Route, Switch } from "wouter";
@@ -21,6 +24,7 @@ import Campaigns from "@/pages/campaigns";
 import Reports from "@/pages/reports";
 import ApiSettings from "@/pages/api-settings";
 import NotFound from "@/pages/not-found";
+import type { ApiConnection } from "@shared/schema";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,119 +35,166 @@ const queryClient = new QueryClient({
   },
 });
 
+// Componente "interno" que já está dentro do Provider
+function AppInner() {
+  const {
+    data: connections,
+    isLoading,
+    error,
+  } = useQuery<ApiConnection[]>({
+    queryKey: ["/api/dashboard/connections"],
+  });
+
+  // fallback leve pro sidebar (não quebra layout enquanto carrega/erro)
+  const safeConnections = connections ?? [];
+
+  return (
+    <TooltipProvider>
+      <Router>
+        <div className="min-h-screen bg-gray-50">
+          <Switch>
+            {/* Public routes */}
+            <Route path="/login" component={Login} />
+            <Route path="/trial-signup" component={TrialSignup} />
+            <Route path="/trial-confirmation" component={TrialConfirmation} />
+            <Route path="/pricing" component={Pricing} />
+
+            {/* Protected routes */}
+            <Route path="/dashboard">
+              <AuthGuard>
+                <div className="flex">
+                  <Sidebar
+                    connections={safeConnections}
+                    loading={isLoading}
+                    error={!!error}
+                  />
+                  <main className="flex-1 ml-64">
+                    <div className="p-8">
+                      <Dashboard />
+                    </div>
+                  </main>
+                </div>
+              </AuthGuard>
+            </Route>
+
+            <Route path="/leads">
+              <AuthGuard>
+                <div className="flex">
+                  <Sidebar
+                    connections={safeConnections}
+                    loading={isLoading}
+                    error={!!error}
+                  />
+                  <main className="flex-1 ml-64">
+                    <div className="p-8">
+                      <Leads />
+                    </div>
+                  </main>
+                </div>
+              </AuthGuard>
+            </Route>
+
+            <Route path="/sales">
+              <AuthGuard>
+                <div className="flex">
+                  <Sidebar
+                    connections={safeConnections}
+                    loading={isLoading}
+                    error={!!error}
+                  />
+                  <main className="flex-1 ml-64">
+                    <div className="p-8">
+                      <Sales />
+                    </div>
+                  </main>
+                </div>
+              </AuthGuard>
+            </Route>
+
+            <Route path="/campaigns">
+              <AuthGuard>
+                <div className="flex">
+                  <Sidebar
+                    connections={safeConnections}
+                    loading={isLoading}
+                    error={!!error}
+                  />
+                  <main className="flex-1 ml-64">
+                    <div className="p-8">
+                      <Campaigns />
+                    </div>
+                  </main>
+                </div>
+              </AuthGuard>
+            </Route>
+
+            <Route path="/reports">
+              <AuthGuard>
+                <div className="flex">
+                  <Sidebar
+                    connections={safeConnections}
+                    loading={isLoading}
+                    error={!!error}
+                  />
+                  <main className="flex-1 ml-64">
+                    <div className="p-8">
+                      <Reports />
+                    </div>
+                  </main>
+                </div>
+              </AuthGuard>
+            </Route>
+
+            <Route path="/settings">
+              <AuthGuard>
+                <div className="flex">
+                  <Sidebar
+                    connections={safeConnections}
+                    loading={isLoading}
+                    error={!!error}
+                  />
+                  <main className="flex-1 ml-64">
+                    <div className="p-8">
+                      <ApiSettings />
+                    </div>
+                  </main>
+                </div>
+              </AuthGuard>
+            </Route>
+
+            {/* Default route */}
+            <Route path="/">
+              <AuthGuard>
+                <div className="flex">
+                  <Sidebar
+                    connections={safeConnections}
+                    loading={isLoading}
+                    error={!!error}
+                  />
+                  <main className="flex-1 ml-64">
+                    <div className="p-8">
+                      <Dashboard />
+                    </div>
+                  </main>
+                </div>
+              </AuthGuard>
+            </Route>
+
+            {/* 404 route */}
+            <Route component={NotFound} />
+          </Switch>
+        </div>
+      </Router>
+      <Toaster />
+    </TooltipProvider>
+  );
+}
+
+// Provider fica no nível mais alto
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Router>
-          <div className="min-h-screen bg-gray-50">
-            <Switch>
-              {/* Public routes */}
-              <Route path="/login" component={Login} />
-              <Route path="/trial-signup" component={TrialSignup} />
-              <Route path="/trial-confirmation" component={TrialConfirmation} />
-              <Route path="/pricing" component={Pricing} />
-              
-              {/* Protected routes */}
-              <Route path="/dashboard">
-                <AuthGuard>
-                  <div className="flex">
-                    <Sidebar />
-                    <main className="flex-1 ml-64">
-                      <div className="p-8">
-                        <Dashboard />
-                      </div>
-                    </main>
-                  </div>
-                </AuthGuard>
-              </Route>
-
-              <Route path="/leads">
-                <AuthGuard>
-                  <div className="flex">
-                    <Sidebar />
-                    <main className="flex-1 ml-64">
-                      <div className="p-8">
-                        <Leads />
-                      </div>
-                    </main>
-                  </div>
-                </AuthGuard>
-              </Route>
-
-              <Route path="/sales">
-                <AuthGuard>
-                  <div className="flex">
-                    <Sidebar />
-                    <main className="flex-1 ml-64">
-                      <div className="p-8">
-                        <Sales />
-                      </div>
-                    </main>
-                  </div>
-                </AuthGuard>
-              </Route>
-
-              <Route path="/campaigns">
-                <AuthGuard>
-                  <div className="flex">
-                    <Sidebar />
-                    <main className="flex-1 ml-64">
-                      <div className="p-8">
-                        <Campaigns />
-                      </div>
-                    </main>
-                  </div>
-                </AuthGuard>
-              </Route>
-
-              <Route path="/reports">
-                <AuthGuard>
-                  <div className="flex">
-                    <Sidebar />
-                    <main className="flex-1 ml-64">
-                      <div className="p-8">
-                        <Reports />
-                      </div>
-                    </main>
-                  </div>
-                </AuthGuard>
-              </Route>
-
-              <Route path="/settings">
-                <AuthGuard>
-                  <div className="flex">
-                    <Sidebar />
-                    <main className="flex-1 ml-64">
-                      <div className="p-8">
-                        <ApiSettings />
-                      </div>
-                    </main>
-                  </div>
-                </AuthGuard>
-              </Route>
-
-              {/* Default route */}
-              <Route path="/">
-                <AuthGuard>
-                  <div className="flex">
-                    <Sidebar />
-                    <main className="flex-1 ml-64">
-                      <div className="p-8">
-                        <Dashboard />
-                      </div>
-                    </main>
-                  </div>
-                </AuthGuard>
-              </Route>
-
-              {/* 404 route */}
-              <Route component={NotFound} />
-            </Switch>
-          </div>
-        </Router>
-        <Toaster />
-      </TooltipProvider>
+      <AppInner />
     </QueryClientProvider>
   );
 }
