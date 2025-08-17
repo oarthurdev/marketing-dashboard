@@ -169,10 +169,8 @@ export default function Dashboard() {
               <p>Next refresh: <span data-testid="text-next-refresh">In 6 hours</span></p>
             </div>
             <div className="flex items-center space-x-4">
-              <Link href="/api-settings">
-                <a className="text-sm text-gray-500 hover:text-gray-700" data-testid="button-api-settings">
-                  API Settings
-                </a>
+              <Link href="/api-settings" className="text-sm text-gray-500 hover:text-gray-700" data-testid="button-api-settings">
+                API Settings
               </Link>
               <button className="text-sm text-gray-500 hover:text-gray-700" data-testid="button-support">
                 Help & Support
