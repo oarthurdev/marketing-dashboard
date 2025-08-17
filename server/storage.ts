@@ -15,23 +15,23 @@ export interface IStorage {
   getMetrics(limit?: number): Promise<Metrics[]>;
   getLatestMetrics(): Promise<Metrics | undefined>;
   createMetrics(metrics: InsertMetrics): Promise<Metrics>;
-  
+
   // Campaigns
   getCampaigns(): Promise<Campaign[]>;
   getCampaignById(id: string): Promise<Campaign | undefined>;
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
   updateCampaign(id: string, updates: Partial<InsertCampaign>): Promise<Campaign | undefined>;
-  
+
   // Activities
   getRecentActivities(limit?: number): Promise<Activity[]>;
   createActivity(activity: InsertActivity): Promise<Activity>;
-  
+
   // API Connections
   getApiConnections(): Promise<ApiConnection[]>;
   getApiConnectionByPlatform(platform: string): Promise<ApiConnection | undefined>;
   createApiConnection(connection: InsertApiConnection): Promise<ApiConnection>;
   updateApiConnection(platform: string, updates: Partial<InsertApiConnection>): Promise<ApiConnection | undefined>;
-  
+
   // Reports
   getReports(limit?: number): Promise<Report[]>;
   createReport(report: InsertReport): Promise<Report>;
@@ -55,22 +55,23 @@ class HybridStorage implements IStorage {
       // Test database connection
       await db.select().from(apiConnections).limit(1);
       console.log('✓ Database connected successfully');
-      
+
       // Initialize default connections in database
       const existingConnections = await db.select().from(apiConnections).limit(1);
-      
+
       if (existingConnections.length === 0) {
         const defaultConnections: InsertApiConnection[] = [
           { platform: 'hubspot', isConnected: false, lastSync: null, config: {} },
           { platform: 'google_ads', isConnected: false, lastSync: null, config: {} },
           { platform: 'shopify', isConnected: false, lastSync: null, config: {} },
           { platform: 'meta_ads', isConnected: false, lastSync: null, config: {} },
-          { platform: 'tiktok_ads', isConnected: false, lastSync: null, config: {} }
+          { platform: 'tiktok_ads', isConnected: false, lastSync: null, config: {} },
+          { platform: 'kommo', isConnected: false, lastSync: null, config: {} }
         ];
 
         await db.insert(apiConnections).values(defaultConnections);
       }
-      
+
       this.isDatabaseAvailable = true;
     } catch (error) {
       console.log('⚠ Database unavailable, using memory storage:', error.message);
@@ -85,7 +86,8 @@ class HybridStorage implements IStorage {
       { platform: 'google_ads', isConnected: false, lastSync: null, config: {} },
       { platform: 'shopify', isConnected: false, lastSync: null, config: {} },
       { platform: 'meta_ads', isConnected: false, lastSync: null, config: {} },
-      { platform: 'tiktok_ads', isConnected: false, lastSync: null, config: {} }
+      { platform: 'tiktok_ads', isConnected: false, lastSync: null, config: {} },
+      { platform: 'kommo', isConnected: false, lastSync: null, config: {} }
     ];
 
     defaultConnections.forEach(conn => {
@@ -115,7 +117,7 @@ class HybridStorage implements IStorage {
         this.isDatabaseAvailable = false;
       }
     }
-    
+
     return Array.from(this.memoryMetrics.values())
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, limit);
@@ -134,7 +136,7 @@ class HybridStorage implements IStorage {
         this.isDatabaseAvailable = false;
       }
     }
-    
+
     const allMetrics = Array.from(this.memoryMetrics.values())
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return allMetrics[0];
@@ -152,7 +154,7 @@ class HybridStorage implements IStorage {
         this.isDatabaseAvailable = false;
       }
     }
-    
+
     const id = randomUUID();
     const metric: Metrics = {
       id,
@@ -177,7 +179,7 @@ class HybridStorage implements IStorage {
         this.isDatabaseAvailable = false;
       }
     }
-    
+
     return Array.from(this.memoryApiConnections.values());
   }
 
@@ -193,7 +195,7 @@ class HybridStorage implements IStorage {
         this.isDatabaseAvailable = false;
       }
     }
-    
+
     return Array.from(this.memoryApiConnections.values())
       .find(conn => conn.platform === platform);
   }
@@ -210,7 +212,7 @@ class HybridStorage implements IStorage {
         this.isDatabaseAvailable = false;
       }
     }
-    
+
     const id = randomUUID();
     const connection: ApiConnection = {
       id,
@@ -236,16 +238,16 @@ class HybridStorage implements IStorage {
         this.isDatabaseAvailable = false;
       }
     }
-    
+
     const connection = Array.from(this.memoryApiConnections.values())
       .find(conn => conn.platform === platform);
-    
+
     if (connection) {
       Object.assign(connection, updates);
       this.memoryApiConnections.set(connection.id, connection);
       return connection;
     }
-    
+
     return undefined;
   }
 
@@ -258,7 +260,7 @@ class HybridStorage implements IStorage {
         this.isDatabaseAvailable = false;
       }
     }
-    
+
     return Array.from(this.memoryCampaigns.values());
   }
 
@@ -274,7 +276,7 @@ class HybridStorage implements IStorage {
         this.isDatabaseAvailable = false;
       }
     }
-    
+
     return this.memoryCampaigns.get(id);
   }
 
@@ -290,7 +292,7 @@ class HybridStorage implements IStorage {
         this.isDatabaseAvailable = false;
       }
     }
-    
+
     const id = randomUUID();
     const campaign: Campaign = {
       id,
@@ -321,17 +323,17 @@ class HybridStorage implements IStorage {
         this.isDatabaseAvailable = false;
       }
     }
-    
+
     const campaign = this.memoryCampaigns.get(id);
     if (campaign) {
       Object.assign(campaign, updates);
       this.memoryCampaigns.set(id, campaign);
       return campaign;
     }
-    
+
     return undefined;
   }
-  
+
   // Activities methods
   async getRecentActivities(limit: number = 20): Promise<Activity[]> {
     if (this.isDatabaseAvailable) {
@@ -345,7 +347,7 @@ class HybridStorage implements IStorage {
         this.isDatabaseAvailable = false;
       }
     }
-    
+
     return Array.from(this.memoryActivities.values())
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, limit);
@@ -363,7 +365,7 @@ class HybridStorage implements IStorage {
         this.isDatabaseAvailable = false;
       }
     }
-    
+
     const id = randomUUID();
     const activity: Activity = {
       id,
@@ -376,7 +378,7 @@ class HybridStorage implements IStorage {
     this.memoryActivities.set(id, activity);
     return activity;
   }
-  
+
   // Reports methods
   async getReports(limit: number = 10): Promise<Report[]> {
     if (this.isDatabaseAvailable) {
@@ -390,7 +392,7 @@ class HybridStorage implements IStorage {
         this.isDatabaseAvailable = false;
       }
     }
-    
+
     return Array.from(this.memoryReports.values())
       .sort((a, b) => new Date(b.generatedAt!).getTime() - new Date(a.generatedAt!).getTime())
       .slice(0, limit);
@@ -408,7 +410,7 @@ class HybridStorage implements IStorage {
         this.isDatabaseAvailable = false;
       }
     }
-    
+
     const id = randomUUID();
     const report: Report = {
       id,

@@ -1,9 +1,10 @@
 import { storage } from '../storage';
-import { HubSpotService } from './hubspot';
-import { GoogleAdsService } from './googleAds';
-import { ShopifyService } from './shopify';
-import { MetaAdsService } from './metaAds';
-import { TikTokAdsService } from './tiktokAds';
+import { HubSpotService } from './hubspot.js';
+import { GoogleAdsService } from './googleAds.js';
+import { ShopifyService } from './shopify.js';
+import { MetaAdsService } from './metaAds.js';
+import { TikTokAdsService } from './tiktokAds.js';
+import { KommoService } from './kommo.js';
 import type { InsertMetrics, InsertActivity, InsertCampaign } from '@shared/schema';
 
 export class DataProcessor {
@@ -12,6 +13,7 @@ export class DataProcessor {
   private shopify: ShopifyService;
   private metaAds: MetaAdsService;
   private tiktokAds: TikTokAdsService;
+  private kommo: KommoService;
   private isDevelopmentMode: boolean;
 
   constructor() {
@@ -20,6 +22,7 @@ export class DataProcessor {
     this.shopify = new ShopifyService();
     this.metaAds = new MetaAdsService();
     this.tiktokAds = new TikTokAdsService();
+    this.kommo = new KommoService();
     // Set development mode based on an environment variable or configuration
     this.isDevelopmentMode = process.env.NODE_ENV === 'development';
     if (this.isDevelopmentMode) {
@@ -248,6 +251,17 @@ export class DataProcessor {
     }
   }
 
+  private async collectKommoData() {
+    try {
+      const leadsToday = await this.kommo.getLeadsToday();
+      const revenueToday = await this.kommo.getRevenueToday();
+      return { leadsToday, revenueToday };
+    } catch (error) {
+      console.error('Error collecting Kommo data:', error);
+      return { leadsToday: 0, revenueToday: 0 };
+    }
+  }
+
   private async consolidateMetrics(
     hubspotResult: PromiseSettledResult<any>,
     googleAdsResult: PromiseSettledResult<any>,
@@ -261,9 +275,9 @@ export class DataProcessor {
     const metaAdsData = metaAdsResult.status === 'fulfilled' ? metaAdsResult.value : { leads: 0, spend: 0 };
     const tiktokAdsData = tiktokAdsResult.status === 'fulfilled' ? tiktokAdsResult.value : { leads: 0, spend: 0 };
 
-    // Calculate consolidated metrics
-    const totalLeads = hubspotData.leadsToday + googleAdsData.leads + metaAdsData.leads + tiktokAdsData.leads;
-    const totalRevenue = hubspotData.revenueToday + shopifyData.revenue;
+    // Aggregate totals
+    const totalLeads = hubspotData.leadsToday + googleAdsData.leads + metaAdsData.leads + tiktokAdsData.leads + kommoData.leadsToday;
+    const totalRevenue = hubspotData.revenueToday + shopifyData.revenue + kommoData.revenueToday;
     const totalSpend = googleAdsData.spend + metaAdsData.spend + tiktokAdsData.spend;
 
     // Calculate conversion rate (orders / leads)
@@ -278,6 +292,7 @@ export class DataProcessor {
       'Google Ads': googleAdsData.leads,
       'Meta Ads': metaAdsData.leads,
       'TikTok Ads': tiktokAdsData.leads,
+      'Kommo CRM': kommoData.leadsToday,
       'Organic': Math.floor(totalLeads * 0.15), // Estimated organic traffic
       'Email': Math.floor(totalLeads * 0.10), // Estimated email leads
       'Social': Math.floor(totalLeads * 0.05), // Estimated other social leads
@@ -331,10 +346,10 @@ export class DataProcessor {
         ];
 
         const existingCampaigns = await storage.getCampaigns();
-        
+
         for (const mockCampaign of mockCampaigns) {
           const roi = mockCampaign.spend > 0 ? ((mockCampaign.leads * 50 - mockCampaign.spend) / mockCampaign.spend) * 100 : 0;
-          
+
           const campaignData: InsertCampaign = {
             name: mockCampaign.name,
             platform: mockCampaign.platform,

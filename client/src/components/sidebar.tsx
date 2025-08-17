@@ -115,6 +115,12 @@ export default function Sidebar({ connections }: SidebarProps) {
                 <span className={`w-2 h-2 rounded-full ${getStatusColor(getConnectionStatus('meta_ads'))}`}></span>
               </div>
             </div>
+            <div className="px-3 py-2 text-sm" data-testid="connection-kommo">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Kommo CRM</span>
+                <span className={`w-2 h-2 rounded-full ${getStatusColor(getConnectionStatus('kommo'))}`}></span>
+              </div>
+            </div>
           </div>
         </div>
 

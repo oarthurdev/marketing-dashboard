@@ -123,10 +123,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Connection not configured' });
       }
 
-      // Simulate API test (replace with actual API calls)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      let success = false;
+      switch (platform) {
+        case 'google_analytics':
+          // Add Google Analytics connection test logic here
+          success = true;
+          break;
+        case 'facebook_ads':
+          // Add Facebook Ads connection test logic here
+          success = true;
+          break;
+        case 'shopify':
+          // Add Shopify connection test logic here
+          success = true;
+          break;
+        case 'meta_ads':
+          // Add Meta Ads connection test logic here
+          success = true;
+          break;
+        case 'tiktok_ads':
+          // Add TikTok Ads connection test logic here
+          success = true;
+          break;
+        case 'kommo':
+          try {
+            const { KommoService } = await import('./services/kommo.js');
+            const kommoService = new KommoService();
+            success = await kommoService.testConnection();
+          } catch (error) {
+            console.error('Kommo connection test failed:', error);
+            success = false;
+          }
+          break;
+      }
 
-      res.json({ message: 'Connection test successful', platform });
+      if (success) {
+        res.json({ message: 'Connection test successful', platform });
+      } else {
+        res.status(500).json({ error: 'Connection test failed', platform });
+      }
     } catch (error) {
       console.error('Error testing connection:', error);
       res.status(500).json({ error: 'Connection test failed' });
@@ -166,9 +201,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reportContent = await reportGenerator.generateDailyReport();
       }
 
-      res.json({ 
+      res.json({
         message: 'Report generated successfully',
-        content: reportContent 
+        content: reportContent
       });
     } catch (error) {
       console.error('Error generating report:', error);
@@ -195,7 +230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Recipient is required' });
       }
 
-      const reportContent = type === 'weekly' 
+      const reportContent = type === 'weekly'
         ? await reportGenerator.generateWeeklyReport()
         : await reportGenerator.generateDailyReport();
 

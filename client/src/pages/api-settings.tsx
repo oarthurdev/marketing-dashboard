@@ -145,6 +145,15 @@ export default function ApiSettings() {
         { key: "advertiser_id", label: "Advertiser ID", type: "text", placeholder: "TikTok Advertiser ID" }
       ],
       docsUrl: "https://ads.tiktok.com/marketing_api/docs"
+    },
+    kommo: {
+      title: "Kommo CRM",
+      description: "Connect to Kommo CRM for leads and customer data",
+      fields: [
+        { key: "access_token", label: "Access Token", type: "password", placeholder: "Kommo Access Token" },
+        { key: "subdomain", label: "Subdomain", type: "text", placeholder: "your-account" }
+      ],
+      docsUrl: "https://www.kommo.com/developers/api/"
     }
   };
 
@@ -167,7 +176,7 @@ export default function ApiSettings() {
       </div>
 
       <Tabs defaultValue="hubspot" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           {Object.entries(platformConfigs).map(([platform, config]) => (
             <TabsTrigger key={platform} value={platform} className="text-sm">
               {config.title}
