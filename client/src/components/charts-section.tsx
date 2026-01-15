@@ -31,54 +31,7 @@ export function ChartsSection({ data }: { data?: any }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8" data-testid="charts-section">
       {/* Revenue Chart */}
-      <Card className="shadow-sm" data-testid="card-revenue-chart">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-gray-900">Tendência de Receita</CardTitle>
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="sm" className="text-sm text-gray-500 hover:text-gray-700">
-                7D
-              </Button>
-              <Button size="sm" className="text-sm bg-primary text-white px-3 py-1 rounded">
-                30D
-              </Button>
-              <Button variant="ghost" size="sm" className="text-sm text-gray-500 hover:text-gray-700">
-                90D
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="h-64">
-              <Skeleton className="w-full h-full" />
-            </div>
-          ) : (
-            <div className="h-64" data-testid="chart-revenue-trend">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis 
-                    tickFormatter={(value) => `R$${value.toLocaleString()}`}
-                  />
-                  <Tooltip 
-                    formatter={(value) => [`R$${Number(value).toLocaleString()}`, 'Receita Diária']}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    stroke="#2563EB" 
-                    strokeWidth={2}
-                    dot={{ fill: '#2563EB', strokeWidth: 2 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
+      
       {/* Lead Sources Chart */}
       <Card className="shadow-sm" data-testid="card-lead-sources">
         <CardHeader>

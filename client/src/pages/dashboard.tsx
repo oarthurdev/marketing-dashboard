@@ -24,8 +24,6 @@ import {
   ArrowDownRight,
   RefreshCw
 } from "lucide-react";
-import { KpiGrid } from "@/components/kpi-grid";
-import { ChartsSection } from "@/components/charts-section";
 import { CampaignTable } from "@/components/campaign-table";
 import ActivityFeed from "@/components/activity-feed";
 
@@ -266,16 +264,6 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           ))}
-        </div>
-
-        {/* KPI Grid */}
-        <div className="animate-fade-up" style={{ animationDelay: "400ms" }}>
-          <KpiGrid data={dashboardData} />
-        </div>
-
-        {/* Charts Section */}
-        <div className="animate-fade-up" style={{ animationDelay: "500ms" }}>
-          <ChartsSection data={dashboardData} />
         </div>
 
         {/* Tables and Activity */}

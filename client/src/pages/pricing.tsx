@@ -131,7 +131,7 @@ export default function Pricing() {
             Escolha seu plano
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Continue aproveitando o MarketingHub Pro com um plano que se adapta às suas necessidades
+            Continue aproveitando o Analytics Dashboard com um plano que se adapta às suas necessidades
           </p>
         </div>
 

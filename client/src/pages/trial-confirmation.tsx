@@ -82,7 +82,7 @@ export default function TrialConfirmation() {
               </Button>
 
               <p className="text-sm text-gray-600">
-                Lembre-se: após 7 dias você precisará escolher um plano para continuar usando o MarketingHub Pro
+                Lembre-se: após 7 dias você precisará escolher um plano para continuar usando o Analytics Dashboard
               </p>
             </div>
           </CardContent>

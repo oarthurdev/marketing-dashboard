@@ -77,10 +77,7 @@ export default function Sidebar({ connections }: SidebarProps) {
             <TrendingUp className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              MarketingHub Pro
-            </h1>
-            <p className="text-xs text-gray-500">Analytics Dashboard</p>
+            <h1 className="text-xl font-bold text-gray-500">Analytics Dashboard</h1>
           </div>
         </div>
 
@@ -123,30 +120,6 @@ export default function Sidebar({ connections }: SidebarProps) {
           </Link>
 
           <Link
-            href="/leads"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
-              isActive("/leads")
-                ? "text-gray-900 bg-blue-50 border-l-4 border-blue-500"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-            }`}
-          >
-            <Users className="w-5 h-5 mr-3" />
-            Leads
-          </Link>
-
-          <Link
-            href="/sales"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
-              isActive("/sales")
-                ? "text-gray-900 bg-blue-50 border-l-4 border-blue-500"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-            }`}
-          >
-            <DollarSign className="w-5 h-5 mr-3" />
-            Vendas
-          </Link>
-
-          <Link
             href="/campaigns"
             className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
               isActive("/campaigns")
@@ -170,78 +143,9 @@ export default function Sidebar({ connections }: SidebarProps) {
             Reports
           </Link>
         </div>
-
-        <div className="mt-8">
-          <h3
-            className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider"
-            data-testid="text-integrations-header"
-          >
-            Integrations
-          </h3>
-          <div className="mt-3 space-y-1">
-            <div className="px-3 py-2 text-sm" data-testid="connection-hubspot">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">HubSpot CRM</span>
-                <span
-                  className={`w-2 h-2 rounded-full ${getStatusColor(getConnectionStatus("hubspot"))}`}
-                ></span>
-              </div>
-            </div>
-            <div
-              className="px-3 py-2 text-sm"
-              data-testid="connection-google-ads"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Google Ads</span>
-                <span
-                  className={`w-2 h-2 rounded-full ${getStatusColor(getConnectionStatus("google_ads"))}`}
-                ></span>
-              </div>
-            </div>
-            <div className="px-3 py-2 text-sm" data-testid="connection-shopify">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Shopify</span>
-                <span
-                  className={`w-2 h-2 rounded-full ${getStatusColor(getConnectionStatus("shopify"))}`}
-                ></span>
-              </div>
-            </div>
-            <div
-              className="px-3 py-2 text-sm"
-              data-testid="connection-meta-ads"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Meta Ads</span>
-                <span
-                  className={`w-2 h-2 rounded-full ${getStatusColor(getConnectionStatus("meta_ads"))}`}
-                ></span>
-              </div>
-            </div>
-            <div className="px-3 py-2 text-sm" data-testid="connection-kommo">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Kommo CRM</span>
-                <span
-                  className={`w-2 h-2 rounded-full ${getStatusColor(getConnectionStatus("kommo"))}`}
-                ></span>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Settings Section */}
         <div className="mt-8 pt-6 border-t border-gray-200">
-          <Link
-            href="/api-settings"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
-              isActive("/api-settings")
-                ? "text-gray-900 bg-blue-50 border-l-4 border-blue-500"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-            }`}
-          >
-            <Settings className="w-5 h-5 mr-3" />
-            API Settings
-          </Link>
-
+          
           <a
             href="#"
             className="flex items-center px-4 py-3 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"

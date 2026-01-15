@@ -18,11 +18,8 @@ import Pricing from "@/pages/pricing";
 
 // Protected pages
 import Dashboard from "@/pages/dashboard";
-import Leads from "@/pages/leads";
-import Sales from "@/pages/sales";
 import Campaigns from "@/pages/campaigns";
 import Reports from "@/pages/reports";
-import ApiSettings from "@/pages/api-settings";
 import NotFound from "@/pages/not-found";
 import type { ApiConnection } from "@shared/schema";
 
@@ -77,40 +74,6 @@ function AppInner() {
               </AuthGuard>
             </Route>
 
-            <Route path="/leads">
-              <AuthGuard>
-                <div className="flex">
-                  <Sidebar
-                    connections={safeConnections}
-                    loading={isLoading}
-                    error={!!error}
-                  />
-                  <main className="flex-1 ml-64">
-                    <div className="p-8">
-                      <Leads />
-                    </div>
-                  </main>
-                </div>
-              </AuthGuard>
-            </Route>
-
-            <Route path="/sales">
-              <AuthGuard>
-                <div className="flex">
-                  <Sidebar
-                    connections={safeConnections}
-                    loading={isLoading}
-                    error={!!error}
-                  />
-                  <main className="flex-1 ml-64">
-                    <div className="p-8">
-                      <Sales />
-                    </div>
-                  </main>
-                </div>
-              </AuthGuard>
-            </Route>
-
             <Route path="/campaigns">
               <AuthGuard>
                 <div className="flex">
@@ -139,23 +102,6 @@ function AppInner() {
                   <main className="flex-1 ml-64">
                     <div className="p-8">
                       <Reports />
-                    </div>
-                  </main>
-                </div>
-              </AuthGuard>
-            </Route>
-
-            <Route path="/settings">
-              <AuthGuard>
-                <div className="flex">
-                  <Sidebar
-                    connections={safeConnections}
-                    loading={isLoading}
-                    error={!!error}
-                  />
-                  <main className="flex-1 ml-64">
-                    <div className="p-8">
-                      <ApiSettings />
                     </div>
                   </main>
                 </div>
