@@ -1,7 +1,7 @@
 import { db } from './db';
 import { eq, desc } from 'drizzle-orm';
 import { 
-  metrics, campaigns, activities, apiConnections, reports,
+  metrics, campaigns, ads, adsets, activities, apiConnections, reports,
   type Metrics, type InsertMetrics, 
   type Campaign, type InsertCampaign,
   type Activity, type InsertActivity,
@@ -9,6 +9,18 @@ import {
   type Report, type InsertReport
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+
+type CampaignRow = any; // ou tipa melhor se quiser
+type AdsetRow = any;
+type AdRow = any;
+
+type CampaignHierarchy = CampaignRow & {
+  adsets: Array<
+    AdsetRow & {
+      ads: AdRow[];
+    }
+  >;
+};
 
 export interface IStorage {
   // Metrics
@@ -264,6 +276,50 @@ class HybridStorage implements IStorage {
     return Array.from(this.memoryCampaigns.values());
   }
 
+  async getCampaignsHierarchy() {
+    if (this.isDatabaseAvailable) {
+      try {
+        const [campaignRows, adsetRows, adRows] = await Promise.all([
+          db.select().from(campaigns),
+          db.select().from(adsets),
+          db.select().from(ads),
+        ]);
+
+        // Normaliza camelCase -> snake_case (só os campos chave)
+        const campaignsOut = campaignRows.map((c: any) => ({
+          ...c,
+          // garante id string
+          id: String(c.id),
+        }));
+
+        const adsetsOut = adsetRows.map((a: any) => ({
+          ...a,
+          id: String(a.id),
+          campaign_id: String(a.campaign_id ?? a.campaignId),
+        }));
+
+        const adsOut = adRows.map((ad: any) => ({
+          ...ad,
+          id: String(ad.id),
+          campaign_id: String(ad.campaign_id ?? ad.campaignId),
+          adset_id: String(ad.adset_id ?? ad.adsetId),
+        }));
+
+        return {
+          campaigns: campaignsOut,
+          adsets: adsetsOut,
+          ads: adsOut,
+        };
+      } catch (e) {
+        this.isDatabaseAvailable = false;
+      }
+    }
+
+    // fallback (sem DB): devolve só campaigns sem árvore
+    const campaignsMem = Array.from(this.memoryCampaigns.values());
+    return { campaigns: campaignsMem, adsets: [], ads: [] };
+  }
+
   async getCampaignById(id: string): Promise<Campaign | undefined> {
     if (this.isDatabaseAvailable) {
       try {
@@ -332,6 +388,40 @@ class HybridStorage implements IStorage {
     }
 
     return undefined;
+  }
+
+  async getDashboard(days: number) {
+    // 🔥 Ajuste isso conforme os dados que você já retorna hoje no /api/dashboard.
+    // A ideia é manter o formato que o front espera.
+
+    const campaigns = await this.getCampaigns();
+
+    // métricas básicas derivadas do que você já tem
+    const totalCampaigns = campaigns.length;
+
+    // exemplos (ajuste se seu sistema tem leads em outra tabela)
+    const totalLeads = campaigns.reduce((acc, c: any) => acc + Number(c.leads ?? 0), 0);
+    const totalSpend = campaigns.reduce((acc, c: any) => acc + Number(c.spend ?? 0), 0);
+
+    // funil (por enquanto usando o que o sistema já tem = leads em campaigns)
+    // depois você pluga oportunidades/visitas/reserva/venda quando tiver origem
+    const funnel = {
+      leads: totalLeads,
+      opportunities: 0,
+      visits: 0,
+      reservations: 0,
+      sales: 0,
+    };
+
+    return {
+      totalCampaigns,
+      totalLeads,
+      totalSpend,
+      funnel,
+      campaignsPreview: campaigns.slice(0, 10),
+      days,
+      updatedAt: new Date().toISOString(),
+    };
   }
 
   // Activities methods

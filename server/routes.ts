@@ -56,6 +56,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/dashboard/campaigns/hierarchy", async (req, res) => {
+    try {
+      const data = await storage.getCampaignsHierarchy();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching campaigns hierarchy:", error);
+      res.status(500).json({ message: "Failed to fetch campaigns hierarchy" });
+    }
+  });
+
   app.get("/api/dashboard/activities", async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 10;
@@ -180,6 +190,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching reports:", error);
       res.status(500).json({ message: "Failed to fetch reports" });
+    }
+  });
+
+  app.get("/api/dashboard", async (req, res) => {
+    try {
+      const days = Number(req.query.days ?? 7);
+
+      const campaigns = await storage.getCampaigns();
+
+      const totalCampaigns = campaigns.length;
+      const totalLeads = campaigns.reduce((acc, c) => acc + Number(c.leads ?? 0), 0);
+      const totalSpend = campaigns.reduce((acc, c) => acc + Number(c.spend ?? 0), 0);
+
+      res.json({
+        totalCampaigns,
+        totalLeads,
+        totalSpend,
+        funnel: {
+          leads: 132,
+          opportunities: 37,
+          visits: 2,
+          reservations: 3,
+          sales: 3,
+        },
+        days,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard", err: error });
     }
   });
 

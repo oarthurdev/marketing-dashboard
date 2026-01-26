@@ -1,205 +1,497 @@
-
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
-import { Search, Filter, Download, RefreshCw, Play, Pause, TrendingUp, Target, DollarSign, Users } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Search,
+  RefreshCw,
+  DollarSign,
+  Users,
+  MousePointerClick,
+  Eye,
+  TrendingUp,
+  Layers,
+  Megaphone,
+  ArrowUpDown,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { Campaign } from "@shared/schema";
+
+type AnyRow = Record<string, any>;
+
+type Campaign = AnyRow & {
+  id: string;
+  name?: string | null;
+  platform?: string | null;
+
+  status?: string | null;
+  effective_status?: string | null;
+  effectiveStatus?: string | null;
+  is_archived?: boolean | null;
+  isArchived?: boolean | null;
+
+  spend?: number | string | null;
+  clicks_last_30d?: number | null;
+  impressions_last_30d?: number | null;
+  ctr_last_30d?: number | string | null;
+  cpc_last_30d?: number | string | null;
+  cpa?: number | string | null;
+
+  leads?: number | null;
+
+  start_date?: string | null;
+  end_date?: string | null;
+  updated_at?: string | null;
+  created_at?: string | null;
+
+  adsets?: Adset[];
+};
+
+type Adset = AnyRow & {
+  id: string;
+  campaign_id?: string | null;
+  campaignId?: string | null;
+  name?: string | null;
+
+  status?: string | null;
+  effective_status?: string | null;
+  effectiveStatus?: string | null;
+  is_archived?: boolean | null;
+  isArchived?: boolean | null;
+
+  spend?: number | string | null;
+  clicks_last_30d?: number | null;
+  impressions_last_30d?: number | null;
+  ctr_last_30d?: number | string | null;
+  cpc_last_30d?: number | string | null;
+  cpa?: number | string | null;
+
+  leads?: number | null;
+
+  ads?: Ad[];
+};
+
+type Ad = AnyRow & {
+  id: string;
+  campaign_id?: string | null;
+  campaignId?: string | null;
+  adset_id?: string | null;
+  adsetId?: string | null;
+  name?: string | null;
+
+  status?: string | null;
+  effective_status?: string | null;
+  effectiveStatus?: string | null;
+  is_archived?: boolean | null;
+  isArchived?: boolean | null;
+
+  spend?: number | string | null;
+  clicks_last_30d?: number | null;
+  impressions_last_30d?: number | null;
+  ctr_last_30d?: number | string | null;
+  cpc_last_30d?: number | string | null;
+  cpa?: number | string | null;
+
+  leads?: number | null;
+};
+
+function toNumber(v: unknown): number {
+  if (v === null || v === undefined) return 0;
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  if (typeof v === "string") {
+    const cleaned = v.replace(",", ".");
+    const n = parseFloat(cleaned);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
+}
+
+function moneyBRL(v: unknown): string {
+  const n = toNumber(v);
+  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function pct(v: unknown, digits = 2): string {
+  const n = toNumber(v);
+  return `${n.toFixed(digits)}%`;
+}
+
+function safeDateBR(v?: string | null): string {
+  if (!v) return "—";
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("pt-BR");
+}
+
+function normalizeStatus(x: AnyRow): string {
+  const eff = (x.effective_status ?? x.effectiveStatus ?? x.status ?? "")
+    .toString()
+    .toUpperCase()
+    .trim();
+  const archived = Boolean(x.is_archived ?? x.isArchived);
+  if (archived) return "ARCHIVED";
+  return eff || "UNKNOWN";
+}
+
+function statusBadgeClass(status: string) {
+  const s = status.toUpperCase();
+  if (s === "ACTIVE") return "bg-emerald-100 text-emerald-800 border-emerald-200";
+  if (s === "PAUSED") return "bg-amber-100 text-amber-800 border-amber-200";
+  if (s === "ARCHIVED") return "bg-slate-100 text-slate-800 border-slate-200";
+  if (s === "DELETED") return "bg-rose-100 text-rose-800 border-rose-200";
+  return "bg-zinc-100 text-zinc-800 border-zinc-200";
+}
+
+function statusLabel(status: string) {
+  switch (status.toUpperCase()) {
+    case "ACTIVE":
+      return "Ativa";
+    case "PAUSED":
+      return "Pausada";
+    case "ARCHIVED":
+      return "Arquivada";
+    case "DELETED":
+      return "Deletada";
+    default:
+      return status || "—";
+  }
+}
+
+function platformLabel(p?: string | null): string {
+  const v = (p || "").toLowerCase();
+  if (v === "meta" || v === "meta_ads") return "Meta Ads";
+  if (v === "google_ads") return "Google Ads";
+  if (v === "tiktok_ads") return "TikTok Ads";
+  if (v === "linkedin_ads") return "LinkedIn Ads";
+  return p || "—";
+}
+
+function computeCPL(spend: unknown, leads?: number | null): number | null {
+  const s = toNumber(spend);
+  const l = typeof leads === "number" ? leads : 0;
+  if (!l || l <= 0) return null;
+  return s / l;
+}
+
+/**
+ * Aceita:
+ * 1) { campaigns:[], adsets:[], ads:[] }
+ * 2) { data:[{... adsets:[{... ads:[] }]}] }  (já aninhado)
+ * 3) [ { id, name, ... } ] (só campanhas)
+ */
+function normalizeHierarchy(payload: any): Campaign[] {
+  if (!payload) return [];
+
+  // =========================
+  // formato 2: aninhado em data
+  // =========================
+  if (Array.isArray(payload?.data)) {
+    return payload.data.map((c: any) => ({
+      ...c,
+      id: String(c.id),
+      start_date: c.start_date ?? c.startDate ?? null,
+      end_date: c.end_date ?? c.endDate ?? null,
+      created_at: c.created_at ?? c.createdAt,
+      adsets: Array.isArray(c.adsets)
+        ? c.adsets.map((as: any) => ({
+            ...as,
+            id: String(as.id),
+            campaign_id: String(as.campaign_id ?? as.campaignId ?? c.id),
+            clicks_last_30d: as.clicks_last_30d ?? as.clicksLast30d ?? 0,
+            impressions_last_30d: as.impressions_last_30d ?? as.impressionsLast30d ?? 0,
+            ctr_last_30d: as.ctr_last_30d ?? as.ctrLast30d ?? null,
+            cpc_last_30d: as.cpc_last_30d ?? as.cpcLast30d ?? null,
+            ads: Array.isArray(as.ads)
+              ? as.ads.map((ad: any) => ({
+                  ...ad,
+                  id: String(ad.id),
+                  campaign_id: String(ad.campaign_id ?? ad.campaignId ?? c.id),
+                  adset_id: String(ad.adset_id ?? ad.adsetId ?? as.id),
+                  clicks_last_30d: ad.clicks_last_30d ?? ad.clicksLast30d ?? 0,
+                  impressions_last_30d: ad.impressions_last_30d ?? ad.impressionsLast30d ?? 0,
+                  ctr_last_30d: ad.ctr_last_30d ?? ad.ctrLast30d ?? null,
+                  cpc_last_30d: ad.cpc_last_30d ?? ad.cpcLast30d ?? null,
+                }))
+              : [],
+          }))
+        : [],
+    }));
+  }
+
+  // =========================
+  // formato 1: listas separadas (SEU CASO ATUAL)
+  // =========================
+  if (
+    Array.isArray(payload?.campaigns) &&
+    Array.isArray(payload?.adsets) &&
+    Array.isArray(payload?.ads)
+  ) {
+    const campaigns = payload.campaigns.map((c: any) => ({
+      ...c,
+      id: String(c.id),
+      start_date: c.start_date ?? c.startDate ?? null,
+      end_date: c.end_date ?? c.endDate ?? null,
+      created_at: c.created_at ?? c.createdAt,
+    })) as Campaign[];
+
+    const adsets = payload.adsets.map((as: any) => ({
+      ...as,
+      id: String(as.id),
+      campaign_id: String(as.campaign_id ?? as.campaignId ?? ''),
+      clicks_last_30d: as.clicks_last_30d ?? as.clicksLast30d ?? 0,
+      impressions_last_30d: as.impressions_last_30d ?? as.impressionsLast30d ?? 0,
+      ctr_last_30d: as.ctr_last_30d ?? as.ctrLast30d ?? null,
+      cpc_last_30d: as.cpc_last_30d ?? as.cpcLast30d ?? null,
+    })) as Adset[];
+
+    const ads = payload.ads.map((ad: any) => ({
+      ...ad,
+      id: String(ad.id),
+      campaign_id: String(ad.campaign_id ?? ad.campaignId ?? ''),
+      adset_id: String(ad.adset_id ?? ad.adsetId ?? ''),
+      clicks_last_30d: ad.clicks_last_30d ?? ad.clicksLast30d ?? 0,
+      impressions_last_30d: ad.impressions_last_30d ?? ad.impressionsLast30d ?? 0,
+      ctr_last_30d: ad.ctr_last_30d ?? ad.ctrLast30d ?? null,
+      cpc_last_30d: ad.cpc_last_30d ?? ad.cpcLast30d ?? null,
+    })) as Ad[];
+
+    const adsetsByCampaign = new Map<string, Adset[]>();
+    for (const as of adsets) {
+      const cid = String(as.campaign_id || '');
+      if (!cid) continue;
+      if (!adsetsByCampaign.has(cid)) adsetsByCampaign.set(cid, []);
+      adsetsByCampaign.get(cid)!.push({ ...as, ads: [] });
+    }
+
+    const adsByAdset = new Map<string, Ad[]>();
+    for (const ad of ads) {
+      const asid = String(ad.adset_id || '');
+      if (!asid) continue;
+      if (!adsByAdset.has(asid)) adsByAdset.set(asid, []);
+      adsByAdset.get(asid)!.push(ad);
+    }
+
+    for (const [, list] of adsetsByCampaign.entries()) {
+      for (const as of list) {
+        const asid = String(as.id);
+        const arr = adsByAdset.get(asid) || [];
+        arr.sort((a, b) => toNumber(b.spend) - toNumber(a.spend));
+        as.ads = arr;
+      }
+      list.sort((a, b) => toNumber(b.spend) - toNumber(a.spend));
+    }
+
+    const out = campaigns.map(c => ({
+      ...c,
+      adsets: adsetsByCampaign.get(String(c.id)) || [],
+    }));
+
+    out.sort((a, b) => toNumber(b.spend) - toNumber(a.spend));
+    return out;
+  }
+
+  // =========================
+  // formato 3: array simples
+  // =========================
+  if (Array.isArray(payload)) {
+    return payload.map((c: any) => ({
+      ...c,
+      id: String(c.id),
+      start_date: c.start_date ?? c.startDate ?? null,
+      end_date: c.end_date ?? c.endDate ?? null,
+      created_at: c.created_at ?? c.createdAt,
+      adsets: [],
+    })) as Campaign[];
+  }
+
+  return [];
+}
+
+type SortKey = "spend" | "clicks" | "cpa" | "name";
 
 export default function Campaigns() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [platformFilter, setPlatformFilter] = useState("all");
   const { toast } = useToast();
 
-  // Mock data fallback
-  const mockCampaigns: Campaign[] = [
-    {
-      id: '1',
-      name: 'Campanha de Verão 2024',
-      platform: 'meta_ads',
-      status: 'active',
-      leads: 120,
-      spend: '1500.50',
-      roi: '25.5',
-      createdAt: '2024-01-15T10:00:00Z',
-    },
-    {
-      id: '2',
-      name: 'Lançamento Produto X',
-      platform: 'google_ads',
-      status: 'paused',
-      leads: 85,
-      spend: '950.75',
-      roi: '15.0',
-      createdAt: '2024-02-20T14:30:00Z',
-    },
-    {
-      id: '3',
-      name: 'Black Friday Ofertas',
-      platform: 'meta_ads',
-      status: 'ended',
-      leads: 250,
-      spend: '3200.00',
-      roi: '40.2',
-      createdAt: '2023-11-01T09:00:00Z',
-    },
-    {
-      id: '4',
-      name: 'Conteúdo Blog Novembro',
-      platform: 'linkedin_ads',
-      status: 'active',
-      leads: 50,
-      spend: '500.00',
-      roi: '10.8',
-      createdAt: '2024-03-01T11:00:00Z',
-    },
-    {
-      id: '5',
-      name: 'Campanha de Teste TikTok',
-      platform: 'tiktok_ads',
-      status: 'draft',
-      leads: 10,
-      spend: '100.00',
-      roi: '5.0',
-      createdAt: '2024-04-01T16:00:00Z',
-    },
-  ];
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [platformFilter, setPlatformFilter] = useState("all");
 
-  // Fetch campaigns data
-  const { data: campaigns = mockCampaigns, isLoading, refetch } = useQuery({
-    queryKey: ['/api/dashboard/campaigns'],
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [selectedAdsetId, setSelectedAdsetId] = useState<string | null>(null);
+
+  const [adsSort, setAdsSort] = useState<SortKey>("spend");
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["/api/dashboard/campaigns/hierarchy"],
     queryFn: async () => {
-      const response = await fetch('/api/dashboard/campaigns');
-      if (response.ok) {
-        return response.json();
-      }
-      // Fallback to mock data if API call fails
-      return mockCampaigns;
+      // tenta hierarchy primeiro; se não existir, cai no endpoint antigo
+      const res1 = await fetch("/api/dashboard/campaigns/hierarchy");
+      if (res1.ok) return await res1.json();
+
+      const res2 = await fetch("/api/dashboard/campaigns");
+      if (!res2.ok) throw new Error("Falha ao carregar campanhas");
+      return await res2.json();
     },
+    retry: 1,
+    staleTime: 30_000,
   });
 
-  const getStatusColor = (status: Campaign['status']) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'paused': return 'bg-yellow-100 text-yellow-800';
-      case 'ended': return 'bg-red-100 text-red-800';
-      case 'draft': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const campaigns = useMemo(() => normalizeHierarchy(data), [data]);
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'active': return 'Ativa';
-      case 'paused': return 'Pausada';
-      case 'ended': return 'Finalizada';
-      case 'draft': return 'Rascunho';
-      default: return status;
-    }
-  };
+  const filteredCampaigns = useMemo(() => {
+    const q = search.trim().toLowerCase();
 
-  const getPlatformName = (platform: string) => {
-    switch (platform) {
-      case 'google_ads': return 'Google Ads';
-      case 'meta_ads': return 'Meta Ads';
-      case 'tiktok_ads': return 'TikTok Ads';
-      case 'linkedin_ads': return 'LinkedIn Ads';
-      default: return platform;
-    }
-  };
+    return campaigns.filter((c) => {
+      const status = normalizeStatus(c);
+      const platform = (c.platform || "").toLowerCase();
 
-  const filteredCampaigns = campaigns.filter(campaign => {
-    const matchesSearch = campaign.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || campaign.status === statusFilter;
-    const matchesPlatform = platformFilter === 'all' || campaign.platform === platformFilter;
+      const matchesSearch =
+        !q ||
+        (c.name || "").toLowerCase().includes(q) ||
+        String(c.id).toLowerCase().includes(q) ||
+        // procura também dentro de adsets/ads (pra achar rápido)
+        (c.adsets || []).some((as) => {
+          if ((as.name || "").toLowerCase().includes(q)) return true;
+          if (String(as.id).toLowerCase().includes(q)) return true;
+          return (as.ads || []).some((ad) => (ad.name || "").toLowerCase().includes(q) || String(ad.id).toLowerCase().includes(q));
+        });
 
-    return matchesSearch && matchesStatus && matchesPlatform;
-  });
+      const matchesStatus = statusFilter === "all" || status === statusFilter;
+      const matchesPlatform = platformFilter === "all" || platform === platformFilter;
 
-  const totalSpend = campaigns.reduce((sum, campaign) => sum + parseFloat(campaign.spend), 0);
-  const totalLeads = campaigns.reduce((sum, campaign) => sum + campaign.leads, 0);
-  const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
-  const averageROI = campaigns.length > 0
-    ? campaigns.reduce((sum, campaign) => sum + parseFloat(campaign.roi), 0) / campaigns.length
-    : 0;
-
-  const handleToggleCampaign = (campaignId: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'active' ? 'paused' : 'active';
-    toast({
-      title: `Campanha ${newStatus === 'active' ? 'reativada' : 'pausada'}`,
-      description: "O status da campanha foi atualizado com sucesso.",
+      return matchesSearch && matchesStatus && matchesPlatform;
     });
-  };
+  }, [campaigns, search, statusFilter, platformFilter]);
 
-  const handleExport = () => {
-    toast({
-      title: "Exportação iniciada",
-      description: "Os dados das campanhas estão sendo exportados.",
-    });
-  };
+  const selectedCampaign: Campaign | null = useMemo(() => {
+    const fallback = filteredCampaigns[0] || null;
+    const found = selectedCampaignId
+      ? filteredCampaigns.find((c) => c.id === selectedCampaignId) || null
+      : null;
+
+    return found || fallback;
+  }, [filteredCampaigns, selectedCampaignId]);
+
+  const adsetsForSelected = useMemo(() => selectedCampaign?.adsets || [], [selectedCampaign]);
+
+  const selectedAdset: Adset | null = useMemo(() => {
+    if (!selectedCampaign) return null;
+    const list = selectedCampaign.adsets || [];
+    const found = selectedAdsetId ? list.find((a) => a.id === selectedAdsetId) || null : null;
+    return found || list[0] || null;
+  }, [selectedCampaign, selectedAdsetId]);
+
+  const adsForSelected = useMemo(() => {
+    if (!selectedCampaign) return [];
+    if (selectedAdsetId) {
+      const as = (selectedCampaign.adsets || []).find((x) => x.id === selectedAdsetId);
+      return as?.ads || [];
+    }
+    // se nenhum conjunto selecionado, mostra todos
+    const all = (selectedCampaign.adsets || []).flatMap((a) => a.ads || []);
+    return all;
+  }, [selectedCampaign, selectedAdsetId]);
+
+  const sortedAds = useMemo(() => {
+    const arr = [...adsForSelected];
+
+    const cmp = (a: Ad, b: Ad) => {
+      if (adsSort === "name") return String(a.name || "").localeCompare(String(b.name || ""));
+      if (adsSort === "clicks") return (b.clicks_last_30d || 0) - (a.clicks_last_30d || 0);
+      if (adsSort === "cpa") return toNumber(a.cpa) - toNumber(b.cpa); // menor CPA primeiro
+      // spend (default): maior spend primeiro
+      return toNumber(b.spend) - toNumber(a.spend);
+    };
+
+    arr.sort(cmp);
+    return arr;
+  }, [adsForSelected, adsSort]);
+
+  const topStats = useMemo(() => {
+    const list = filteredCampaigns;
+    const totalSpend = list.reduce((sum, c) => sum + toNumber(c.spend), 0);
+    const totalLeads = list.reduce((sum, c) => sum + (c.leads || 0), 0);
+    const totalClicks = list.reduce((sum, c) => sum + (c.clicks_last_30d || 0), 0);
+    const totalImpr = list.reduce((sum, c) => sum + (c.impressions_last_30d || 0), 0);
+
+    const avgCpaClick = totalClicks > 0 ? totalSpend / totalClicks : null;
+    const avgCpl = totalLeads > 0 ? totalSpend / totalLeads : null;
+
+    return { totalSpend, totalLeads, totalClicks, totalImpr, avgCpaClick, avgCpl };
+  }, [filteredCampaigns]);
 
   const handleRefresh = async () => {
     await refetch();
     toast({
-      title: "Dados atualizados",
-      description: "A lista de campanhas foi atualizada com sucesso.",
+      title: "Atualizado",
+      description: "Campanhas, conjuntos e anúncios atualizados.",
     });
   };
+
+  const cStatus = selectedCampaign ? normalizeStatus(selectedCampaign) : "UNKNOWN";
+  const cpl = selectedCampaign ? computeCPL(selectedCampaign.spend, selectedCampaign.leads) : null;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Campanhas</h1>
-          <p className="text-gray-500">Gerencie suas campanhas de marketing</p>
+          <p className="text-gray-500">
+            Visual estilo “Ads Manager”, só que feito pra gestor bater o olho e decidir.
+          </p>
         </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="w-4 h-4 mr-2" />
-            Exportar
-          </Button>
-          <Button onClick={handleRefresh}>
+
+        <div className="flex items-center gap-2">
+          <Button onClick={handleRefresh} disabled={isLoading}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Atualizar
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center">
-              <Target className="w-4 h-4 mr-2" />
-              Campanhas Ativas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeCampaigns}</div>
-            <p className="text-xs text-muted-foreground">
-              de {campaigns.length} campanhas totais
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
+      {/* Top KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+        <Card className="md:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center">
               <DollarSign className="w-4 h-4 mr-2" />
-              Gasto Total
+              Gasto (filtrado)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ {totalSpend.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">+12% desde ontem</p>
+            <div className="text-2xl font-bold">{moneyBRL(topStats.totalSpend)}</div>
+            <p className="text-xs text-muted-foreground">Somatório do recorte atual</p>
           </CardContent>
         </Card>
 
@@ -207,150 +499,462 @@ export default function Campaigns() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center">
               <Users className="w-4 h-4 mr-2" />
-              Leads Gerados
+              Leads (CTA)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalLeads}</div>
-            <p className="text-xs text-muted-foreground">+8% desde ontem</p>
+            <div className="text-2xl font-bold">{topStats.totalLeads}</div>
+            <p className="text-xs text-muted-foreground">
+              CPL: {topStats.avgCpl ? moneyBRL(topStats.avgCpl) : "—"}
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center">
-              <TrendingUp className="w-4 h-4 mr-2" />
-              ROI Médio
+              <MousePointerClick className="w-4 h-4 mr-2" />
+              Cliques (30d)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{averageROI.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground">+5% desde ontem</p>
+            <div className="text-2xl font-bold">{topStats.totalClicks.toLocaleString("pt-BR")}</div>
+            <p className="text-xs text-muted-foreground">
+              CPA/clique: {topStats.avgCpaClick ? moneyBRL(topStats.avgCpaClick) : "—"}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <Eye className="w-4 h-4 mr-2" />
+              Impressões (30d)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{topStats.totalImpr.toLocaleString("pt-BR")}</div>
+            <p className="text-xs text-muted-foreground">Visibilidade geral</p>
+          </CardContent>
+        </Card>
+
+        <Card className="hidden md:block">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Campanhas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{filteredCampaigns.length}</div>
+            <p className="text-xs text-muted-foreground">No filtro atual</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Buscar campanhas..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+      {/* Main layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left: campaigns list */}
+        <Card className="lg:col-span-4">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Megaphone className="w-5 h-5" />
+                  Campanhas
+                </CardTitle>
+                <CardDescription>
+                  Clique numa campanha pra ver conjuntos e anúncios.
+                </CardDescription>
               </div>
             </div>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os status</SelectItem>
-                <SelectItem value="active">Ativa</SelectItem>
-                <SelectItem value="paused">Pausada</SelectItem>
-                <SelectItem value="ended">Finalizada</SelectItem>
-                <SelectItem value="draft">Rascunho</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="mt-3 space-y-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar por nome/ID/adset/ad..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
 
-            <Select value={platformFilter} onValueChange={setPlatformFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Plataforma" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as plataformas</SelectItem>
-                <SelectItem value="google_ads">Google Ads</SelectItem>
-                <SelectItem value="meta_ads">Meta Ads</SelectItem>
-                <SelectItem value="tiktok_ads">TikTok Ads</SelectItem>
-                <SelectItem value="linkedin_ads">LinkedIn Ads</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+              <div className="grid grid-cols-2 gap-2">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="ACTIVE">Ativa</SelectItem>
+                    <SelectItem value="PAUSED">Pausada</SelectItem>
+                    <SelectItem value="ARCHIVED">Arquivada</SelectItem>
+                    <SelectItem value="DELETED">Deletada</SelectItem>
+                    <SelectItem value="UNKNOWN">Indefinida</SelectItem>
+                  </SelectContent>
+                </Select>
 
-      {/* Campaigns Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de Campanhas</CardTitle>
-          <CardDescription>
-            {filteredCampaigns.length} campanhas encontradas
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Plataforma</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Leads</TableHead>
-                <TableHead>Gasto</TableHead>
-                <TableHead>ROI</TableHead>
-                <TableHead>Performance</TableHead>
-                <TableHead>Criada em</TableHead>
-                <TableHead>Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCampaigns.map((campaign) => (
-                <TableRow key={campaign.id}>
-                  <TableCell className="font-medium">{campaign.name}</TableCell>
-                  <TableCell>{getPlatformName(campaign.platform)}</TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(campaign.status)}>
-                      {getStatusText(campaign.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{campaign.leads}</TableCell>
-                  <TableCell>R$ {parseFloat(campaign.spend).toLocaleString()}</TableCell>
-                  <TableCell className={parseFloat(campaign.roi) >= 0 ? 'text-green-600' : 'text-red-600'}>
-                    {parseFloat(campaign.roi).toFixed(1)}%
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span>Meta: 100 leads</span>
-                        <span>{campaign.leads}/100</span>
-                      </div>
-                      <Progress
-                        value={Math.min((campaign.leads / 100) * 100, 100)}
-                        className="h-2"
-                      />
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(campaign.createdAt).toLocaleDateString('pt-BR')}
-                  </TableCell>
-                  <TableCell>
-                    <Button
+                <Select value={platformFilter} onValueChange={setPlatformFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Plataforma" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    <SelectItem value="meta">Meta Ads</SelectItem>
+                    <SelectItem value="meta_ads">Meta Ads (legacy)</SelectItem>
+                    <SelectItem value="google_ads">Google Ads</SelectItem>
+                    <SelectItem value="tiktok_ads">TikTok Ads</SelectItem>
+                    <SelectItem value="linkedin_ads">LinkedIn Ads</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-0">
+            <Separator />
+            <ScrollArea className="h-[560px]">
+              <div className="p-2">
+                {isLoading ? (
+                  <div className="p-4 text-sm text-muted-foreground">Carregando…</div>
+                ) : filteredCampaigns.length === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground">
+                    Nada aqui com esses filtros 😅
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredCampaigns.map((c) => {
+                      const status = normalizeStatus(c);
+                      const selected = selectedCampaign?.id === c.id;
+
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => {
+                            setSelectedCampaignId(c.id);
+                            setSelectedAdsetId(null);
+                          }}
+                          className={[
+                            "w-full text-left rounded-xl border p-3 transition",
+                            selected
+                              ? "border-primary/40 bg-primary/5 shadow-sm"
+                              : "hover:bg-muted/40",
+                          ].join(" ")}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="font-medium text-gray-900 truncate">
+                                {c.name || "—"}
+                              </div>
+                              <div className="text-xs text-muted-foreground truncate">
+                                ID: <span className="font-mono">{c.id}</span> •{" "}
+                                {platformLabel(c.platform)}
+                              </div>
+                            </div>
+
+                            <Badge
+                              variant="outline"
+                              className={[
+                                "shrink-0 border",
+                                statusBadgeClass(status),
+                              ].join(" ")}
+                            >
+                              {statusLabel(status)}
+                            </Badge>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                            <div className="rounded-lg bg-muted/30 p-2">
+                              <div className="text-muted-foreground">Gasto</div>
+                              <div className="font-semibold">{moneyBRL(c.spend)}</div>
+                            </div>
+                            <div className="rounded-lg bg-muted/30 p-2">
+                              <div className="text-muted-foreground">Cliques</div>
+                              <div className="font-semibold">
+                                {(c.clicks_last_30d || 0).toLocaleString("pt-BR")}
+                              </div>
+                            </div>
+                            <div className="rounded-lg bg-muted/30 p-2">
+                              <div className="text-muted-foreground">Leads</div>
+                              <div className="font-semibold">{c.leads || 0}</div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* Right: details */}
+        <Card className="lg:col-span-8">
+          <CardHeader>
+            {selectedCampaign ? (
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <CardTitle className="text-xl truncate">{selectedCampaign.name || "—"}</CardTitle>
+                    <CardDescription className="truncate">
+                      ID: <span className="font-mono">{selectedCampaign.id}</span> •{" "}
+                      {platformLabel(selectedCampaign.platform)} • Atualizado:{" "}
+                      {safeDateBR(selectedCampaign.updated_at || selectedCampaign.created_at)}
+                    </CardDescription>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Badge
                       variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleCampaign(campaign.id, campaign.status)}
-                      className="mr-2"
+                      className={["border", statusBadgeClass(cStatus)].join(" ")}
                     >
-                      {campaign.status === 'active' ? (
-                        <Pause className="w-4 h-4" />
-                      ) : (
-                        <Play className="w-4 h-4" />
-                      )}
+                      {statusLabel(cStatus)}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div className="rounded-xl border bg-muted/20 p-3">
+                    <div className="text-xs text-muted-foreground flex items-center gap-2">
+                      <DollarSign className="w-4 h-4" /> Gasto (30d)
+                    </div>
+                    <div className="text-lg font-semibold mt-1">{moneyBRL(selectedCampaign.spend)}</div>
+                  </div>
+
+                  <div className="rounded-xl border bg-muted/20 p-3">
+                    <div className="text-xs text-muted-foreground flex items-center gap-2">
+                      <MousePointerClick className="w-4 h-4" /> Cliques (30d)
+                    </div>
+                    <div className="text-lg font-semibold mt-1">
+                      {(selectedCampaign.clicks_last_30d || 0).toLocaleString("pt-BR")}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border bg-muted/20 p-3">
+                    <div className="text-xs text-muted-foreground flex items-center gap-2">
+                      <Users className="w-4 h-4" /> Leads (CTA)
+                    </div>
+                    <div className="text-lg font-semibold mt-1">{selectedCampaign.leads || 0}</div>
+                  </div>
+
+                  <div className="rounded-xl border bg-muted/20 p-3">
+                    <div className="text-xs text-muted-foreground flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4" /> CPA / CPL
+                    </div>
+                    <div className="text-sm font-semibold mt-1">
+                      <div>CPA: {selectedCampaign.cpa ? moneyBRL(selectedCampaign.cpa) : "—"}</div>
+                      <div>CPL: {cpl !== null ? moneyBRL(cpl) : "—"}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <CardTitle>Selecione uma campanha</CardTitle>
+                <CardDescription>Escolha uma campanha na coluna da esquerda.</CardDescription>
+              </div>
+            )}
+          </CardHeader>
+
+          <CardContent>
+            {!selectedCampaign ? null : (
+              <Tabs defaultValue="adsets" className="w-full">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <TabsList className="w-full md:w-auto">
+                    <TabsTrigger value="adsets" className="gap-2">
+                      <Layers className="w-4 h-4" /> Conjuntos
+                    </TabsTrigger>
+                    <TabsTrigger value="ads" className="gap-2">
+                      <Megaphone className="w-4 h-4" /> Anúncios
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-muted-foreground hidden md:block">
+                      Dica: ordene anúncios pra achar “campeão” e “vilão” rápido.
+                    </div>
+                    <Select value={adsSort} onValueChange={(v) => setAdsSort(v as SortKey)}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Ordenar anúncios" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="spend">Maior gasto</SelectItem>
+                        <SelectItem value="clicks">Mais cliques</SelectItem>
+                        <SelectItem value="cpa">Menor CPA</SelectItem>
+                        <SelectItem value="name">Nome (A-Z)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <TabsContent value="adsets" className="mt-4">
+                  <Card className="border-dashed">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Conjuntos de anúncios</CardTitle>
+                      <CardDescription>
+                        Clique em um conjunto para ver só os anúncios dele (ou veja todos na aba Anúncios).
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0 overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Conjunto</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Leads</TableHead>
+                            <TableHead className="text-right">Cliques (30d)</TableHead>
+                            <TableHead className="text-right">Impressões</TableHead>
+                            <TableHead className="text-right">Gasto</TableHead>
+                            <TableHead className="text-right">CPA</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(adsetsForSelected || []).map((as) => {
+                            const st = normalizeStatus(as);
+                            const isSelected = selectedAdset?.id === as.id;
+
+                            return (
+                              <TableRow
+                                key={as.id}
+                                className={["cursor-pointer", isSelected ? "bg-primary/5" : "hover:bg-muted/30"].join(" ")}
+                                onClick={() => setSelectedAdsetId(as.id)}
+                              >
+                                <TableCell className="min-w-[320px]">
+                                  <div className="font-medium">{as.name || "—"}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    ID: <span className="font-mono">{as.id}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className={["border", statusBadgeClass(st)].join(" ")}>
+                                    {statusLabel(st)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">{as.leads || 0}</TableCell>
+                                <TableCell className="text-right">
+                                  {(as.clicks_last_30d || 0).toLocaleString("pt-BR")}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {(as.impressions_last_30d || 0).toLocaleString("pt-BR")}
+                                </TableCell>
+                                <TableCell className="text-right">{moneyBRL(as.spend)}</TableCell>
+                                <TableCell className="text-right">{as.cpa ? moneyBRL(as.cpa) : "—"}</TableCell>
+                              </TableRow>
+                            );
+                          })}
+
+                          {(adsetsForSelected || []).length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                                Nenhum conjunto encontrado para essa campanha.
+                              </TableCell>
+                            </TableRow>
+                          ) : null}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+
+                  <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+                    <ArrowUpDown className="w-4 h-4" />
+                    Selecionado:{" "}
+                    <span className="font-medium text-foreground">
+                      {selectedAdset ? selectedAdset.name : "—"}
+                    </span>{" "}
+                    • Anúncios nesse conjunto:{" "}
+                    <span className="font-medium text-foreground">{(selectedAdset?.ads || []).length}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="ml-auto"
+                      onClick={() => setSelectedAdsetId(null)}
+                    >
+                      Ver todos os anúncios
                     </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="ads" className="mt-4">
+                  <Card className="border-dashed">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Anúncios</CardTitle>
+                      <CardDescription>
+                        Ranking prático: dá pra achar o “campeão” (baixo CPA / bom volume) e o “vilão” (alto gasto e pouco retorno).
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0 overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Anúncio</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Leads</TableHead>
+                            <TableHead className="text-right">Cliques (30d)</TableHead>
+                            <TableHead className="text-right">CTR</TableHead>
+                            <TableHead className="text-right">CPC</TableHead>
+                            <TableHead className="text-right">Gasto</TableHead>
+                            <TableHead className="text-right">CPA</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {sortedAds.map((ad) => {
+                            const st = normalizeStatus(ad);
+                            return (
+                              <TableRow key={ad.id} className="hover:bg-muted/30">
+                                <TableCell className="min-w-[360px]">
+                                  <div className="font-medium">{ad.name || "—"}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    ID: <span className="font-mono">{ad.id}</span>
+                                    {ad.adset_id || ad.adsetId ? (
+                                      <>
+                                        {" "}• Adset:{" "}
+                                        <span className="font-mono">
+                                          {String(ad.adset_id ?? ad.adsetId)}
+                                        </span>
+                                      </>
+                                    ) : null}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className={["border", statusBadgeClass(st)].join(" ")}>
+                                    {statusLabel(st)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">{ad.leads || 0}</TableCell>
+                                <TableCell className="text-right">
+                                  {(ad.clicks_last_30d || 0).toLocaleString("pt-BR")}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  ad.ctr_last_30d ? pct(ad.ctr_last_30d, 2) : "—"
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  ad.cpc_last_30d ? moneyBRL(ad.cpc_last_30d) : "—"
+                                </TableCell>
+                                <TableCell className="text-right">{moneyBRL(ad.spend)}</TableCell>
+                                <TableCell className="text-right">{ad.cpa ? moneyBRL(ad.cpa) : "—"}</TableCell>
+                              </TableRow>
+                            );
+                          })}
+
+                          {sortedAds.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                                Nenhum anúncio encontrado. Se o endpoint hierarchy estiver ok, isso normalmente significa campanha sem ads.
+                              </TableCell>
+                            </TableRow>
+                          ) : null}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

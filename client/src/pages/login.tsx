@@ -36,8 +36,8 @@ export default function Login() {
   const { toast } = useToast();
 
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("admin@test.com");
-  const [password, setPassword] = useState("123456");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   // Se já estiver logado, manda pra dashboard
@@ -55,7 +55,7 @@ export default function Login() {
       // Mantém o comportamento original
       await new Promise((resolve) => setTimeout(resolve, 300));
 
-      if (email === "admin@test.com" && password === "123456") {
+      if (email === "admin@atinus.com.br" && password === "Atinus2025") {
         localStorage.setItem("authToken", "demo-token");
         localStorage.setItem("subscriptionActive", "true");
         localStorage.setItem("userEmail", email);
