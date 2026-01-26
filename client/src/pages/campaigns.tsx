@@ -670,14 +670,10 @@ export default function Campaigns() {
                               <div className="font-semibold">{moneyBRL(c.spend)}</div>
                             </div>
                             <div className="rounded-lg bg-muted/30 p-2">
-                              <div className="text-muted-foreground">Cliques</div>
+                              <div className="text-muted-foreground">ROI</div>
                               <div className="font-semibold">
-                                {(c.clicks_last_30d || 0).toLocaleString("pt-BR")}
+                                {(c.roi || 0)}
                               </div>
-                            </div>
-                            <div className="rounded-lg bg-muted/30 p-2">
-                              <div className="text-muted-foreground">Leads</div>
-                              <div className="font-semibold">{c.leads || 0}</div>
                             </div>
                           </div>
                         </button>
