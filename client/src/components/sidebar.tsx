@@ -71,7 +71,7 @@ export default function Sidebar({ connections }: SidebarProps) {
       data-testid="sidebar"
     >
       {/* Logo */}
-      <div className="px-6 py-6">
+      <div className="px-6 py-4">
         <div className="flex items-center space-x-3 mb-4">
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-xl">
             <TrendingUp className="w-6 h-6 text-white" />
@@ -89,23 +89,10 @@ export default function Sidebar({ connections }: SidebarProps) {
               {userEmail.split("@")[0]}
             </span>
           </div>
-          <div className="text-xs text-gray-600">
-            {isTrialActive ? (
-              <span className="text-orange-600 font-medium">
-                Teste Gratuito
-              </span>
-            ) : activePlan ? (
-              <span className="text-green-600 font-medium">
-                Plano {planNames[activePlan as keyof typeof planNames]}
-              </span>
-            ) : (
-              "Usuário"
-            )}
-          </div>
         </div>
+        <hr />
       </div>
-
-      <nav className="mt-6 px-3" data-testid="nav-main">
+      <nav className="mt-3" data-testid="nav-main">
         <div className="space-y-2">
           <Link
             href="/dashboard"

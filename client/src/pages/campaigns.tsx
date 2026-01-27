@@ -923,10 +923,10 @@ export default function Campaigns() {
                                   {(ad.clicks_last_30d || 0).toLocaleString("pt-BR")}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  ad.ctr_last_30d ? pct(ad.ctr_last_30d, 2) : "—"
+                                  {(ad.ctr_last_30d ? pct(ad.ctr_last_30d, 2) : "—")}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  ad.cpc_last_30d ? moneyBRL(ad.cpc_last_30d) : "—"
+                                  {(ad.cpc_last_30d ? moneyBRL(ad.cpc_last_30d) : "—")}
                                 </TableCell>
                                 <TableCell className="text-right">{moneyBRL(ad.spend)}</TableCell>
                                 <TableCell className="text-right">{ad.cpa ? moneyBRL(ad.cpa) : "—"}</TableCell>
