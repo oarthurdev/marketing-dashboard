@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { DataProcessor } from "./services/dataProcessor";
 import { ReportGenerator } from "./services/reportGenerator";
 import schedule from "node-schedule"; // Changed from node-cron to node-schedule for potential consistency, assuming it's a typo in the original or a preferred choice. If node-cron is strictly required, revert this.
+import { getLeadsByRange, getOpportunitiesByRange } from "./helpers/getStateByRange.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const dataProcessor = new DataProcessor();
@@ -43,6 +44,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching metrics:", error);
       res.status(500).json({ message: "Failed to fetch metrics" });
+    }
+  });
+
+  app.get("/api/funnel", async (req, res) => {
+    try {
+      const { range = "weekly" } = req.query as {
+        range?: "daily" | "weekly" | "monthly";
+      };
+
+      const campaigns = await storage.getCampaigns();
+
+      const now = new Date();
+      let rangeLabel = "";
+
+      if (range === "daily") {
+        rangeLabel = `Hoje (${now.toLocaleDateString("pt-BR")})`;
+      } else if (range === "monthly") {
+        rangeLabel = now.toLocaleDateString("pt-BR", {
+          month: "long",
+          year: "numeric",
+        });
+      } else {
+        const start = new Date(now);
+        start.setDate(now.getDate() - 6);
+        rangeLabel = `${start.toLocaleDateString("pt-BR")} A ${now.toLocaleDateString("pt-BR")}`;
+      }
+
+      const leads = campaigns.reduce((acc, c) => {
+        return acc + Number(getLeadsByRange(c, range));
+      }, 0);
+
+      const opportunities = campaigns.reduce((acc, c) => {
+        return acc + Number(getOpportunitiesByRange(c, range));
+      }, 0);
+
+      const funnel = {
+        leads,
+        opportunities,
+        visits: Math.round(opportunities * 0.6),
+        reservations: Math.round(opportunities * 0.35),
+        sales: Math.round(opportunities * 0.25),
+      };
+
+      res.json({
+        range,
+        rangeLabel,
+        data: funnel,
+      });
+    } catch (error) {
+      console.error("Error fetching funnel:", error);
+      res.status(500).json({ message: "Failed to fetch funnel data" });
     }
   });
 

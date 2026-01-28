@@ -18,7 +18,12 @@ export const campaigns = pgTable("campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   platform: text("platform").notNull(), // 'google', 'facebook', 'linkedin', etc.
-  leads: integer("leads").notNull().default(0),
+  leads_monthly: integer("leads_monthly").notNull().default(0),
+  leads_weekly: integer("leads_weekly").notNull().default(0),
+  leads_daily: integer("leads_daily").notNull().default(0),
+  monthly_oportunity: integer("monthly_oportunity").notNull().default(0),
+  weekly_oportunity: integer("weekly_oportunity").notNull().default(0),
+  daily_oportunity: integer("daily_oportunity").notNull().default(0),
   spend: decimal("spend", { precision: 12, scale: 2 }).notNull().default("0.00"),
   roi: decimal("roi", { precision: 8, scale: 2 }).notNull().default("0.00"),
   status: text("status").notNull().default("active"), // 'active', 'paused', 'ended'

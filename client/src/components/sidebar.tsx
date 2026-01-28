@@ -130,18 +130,6 @@ export default function Sidebar({ connections }: SidebarProps) {
             Reports
           </Link>
         </div>
-        {/* Settings Section */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          
-          <a
-            href="#"
-            className="flex items-center px-4 py-3 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
-          >
-            <HelpCircle className="w-5 h-5 mr-3" />
-            Help & Support
-          </a>
-        </div>
-
         {/* Bottom section with logout */}
         <div className="absolute bottom-0 left-0 right-0 p-6">
           <Separator className="mb-4" />

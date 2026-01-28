@@ -34,7 +34,7 @@ function formatDateRange(days: number) {
 
 import { CampaignTable } from "@/components/campaign-table";
 import ActivityFeed from "@/components/activity-feed";
-import { SalesFunnelPrintModern } from "@/components/SalesFunnel";
+import SalesFunnel from "@/components/SalesFunnel";
 
 interface DashboardData {
   totalRevenue: number;
@@ -91,7 +91,7 @@ function buildFunnelTitle(days: number) {
   const end = new Date();
   const start = new Date();
   start.setDate(end.getDate() - Math.max(1, days) + 1);
-  return `FUNIL DE VENDAS - ${formatDatePtBR(start)} A ${formatDatePtBR(end)}`;
+  return `PERÍODO - ${formatDatePtBR(start)} A ${formatDatePtBR(end)}`;
 }
 
 function pct(part: number, whole: number) {
@@ -109,6 +109,16 @@ interface KommoStatus {
 export default function Dashboard() {
   const [dateRange, setDateRange] = useState("7");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [funnelRange, setFunnelRange] = useState<"daily" | "weekly" | "monthly">("weekly");
+
+  const { data: funnelData } = useQuery({
+    queryKey: ["sales-funnel", funnelRange],
+    queryFn: async () => {
+      const res = await fetch(`/api/funnel?range=${funnelRange}`);
+      if (!res.ok) throw new Error("Erro ao buscar funil");
+      return res.json();
+    },
+  });
 
   const { data: dashboardData, isLoading, refetch } = useQuery<DashboardData>({
     queryKey: ["dashboard", dateRange],
@@ -203,20 +213,6 @@ export default function Dashboard() {
   ];
 
   const daysForTitle = dateRange === "7" ? 7 : dateRange === "90" ? 90 : dateRange === "365" ? 365 : 30;
-  const funnel =
-    dashboardData?.funnel ??
-    (() => {
-      const leads = Number(dashboardData?.totalLeads ?? 0) || 0;
-      // Fallbacks: se o backend ainda não expõe as etapas intermediárias, estimamos usando as proporções do modelo.
-      // Assim o layout fica sempre preenchido, sem quebrar o visual.
-      return {
-        leads,
-        opportunities: Math.round(leads * 0.28),
-        visits: Math.round(leads * 0.015),
-        reservations: Math.round(leads * 0.023),
-        sales: Math.round(leads * 0.023),
-      };
-    })();
 
   return (
     <div className="min-h-screen bg-mesh" data-testid="dashboard-layout">
@@ -245,93 +241,33 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-            
-            <div className="flex items-center space-x-4">
-              {/* Date Range Picker */}
-              <div className="flex items-center space-x-2">
-                <Calendar className="w-4 h-4 text-muted-foreground" />
-                <Select value={dateRange} onValueChange={setDateRange}>
-                  <SelectTrigger className="w-44" data-testid="select-date-range">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="7">Últimos 7 dias</SelectItem>
-                    <SelectItem value="30">Últimos 30 dias</SelectItem>
-                    <SelectItem value="90">Este trimestre</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <Button 
-                variant="outline" 
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="group"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
-                Atualizar
-              </Button>
-              
-              <Button 
-                variant="gradient" 
-                onClick={handleExport}
-                data-testid="button-export"
-                className="shadow-lg"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Exportar Relatório
-              </Button>
-            </div>
           </div>
         </div>
       </header>
-
+      <br />
       <div className="container mx-auto px-6 py-8 space-y-8">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => (
-            <Card key={stat.title} className="card-hover border-0 shadow-lg glass-effect animate-fade-up" style={{ animationDelay: `${index * 100}ms` }}>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      {stat.title}
-                    </p>
-                    <p className="text-3xl font-bold text-foreground">
-                      {stat.value}
-                    </p>
-                    <div className="flex items-center space-x-1">
-                      {stat.trend === "up" ? (
-                        <ArrowUpRight className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <ArrowDownRight className="w-4 h-4 text-red-600" />
-                      )}
-                      <span className={`text-sm font-medium ${stat.trend === "up" ? "text-green-600" : "text-red-600"}`}>
-                        {stat.change}
-                      </span>
-                      <span className="text-sm text-muted-foreground">vs período anterior</span>
-                    </div>
-                  </div>
-                  <div className={`w-16 h-16 ${stat.bgColor} rounded-2xl flex items-center justify-center`}>
-                    <stat.icon className={`w-8 h-8 ${stat.color}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
         {/* Funil de Vendas */}
-        <SalesFunnelPrintModern
-            rangeLabel={"18/01/2026 A 24/01/2026"}
-            data={{
-              leads: 132,
-              opportunities: 37,
-              visits: 2,
-              reservations: 3,
-              sales: 3,
-            }}
+        <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">Funil de Vendas</h2>
+
+        <Select value={funnelRange} onValueChange={(v) => setFunnelRange(v as any)}>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="daily">Diário</SelectItem>
+            <SelectItem value="weekly">Semanal</SelectItem>
+            <SelectItem value="monthly">Mensal</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+        {funnelData && (
+          <SalesFunnel
+            rangeLabel={funnelData.rangeLabel}
+            data={funnelData.data}
           />
+        )}
       </div>
     </div>
   );
