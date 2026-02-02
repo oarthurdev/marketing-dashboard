@@ -132,7 +132,7 @@ export default function Login() {
               >
                 {loading ? "Validando acesso…" : (
                   <span className="flex items-center gap-2">
-                    Entrar no dashboard
+                    Entrar
                     <ArrowRight className="w-4 h-4" />
                   </span>
                 )}
