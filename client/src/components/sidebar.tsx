@@ -95,9 +95,9 @@ export default function Sidebar({ connections }: SidebarProps) {
       <nav className="mt-3" data-testid="nav-main">
         <div className="space-y-2">
           <Link
-            href="/dashboard"
+            href="/"
             className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
-              isActive("/dashboard") || isActive("/")
+              isActive("/")
                 ? "text-gray-900 bg-blue-50 border-l-4 border-blue-500"
                 : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
             }`}

@@ -36,7 +36,7 @@ export default function Login() {
           description: "Bem-vindo ao painel de campanhas da Atinus.",
         });
 
-        setLocation("/dashboard");
+        setLocation("/");
       } else {
         toast({
           title: "Acesso negado",

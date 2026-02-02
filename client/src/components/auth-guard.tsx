@@ -73,7 +73,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     }
 
     if (authState === "authenticated" || authState === "trial") {
-      if (publicPaths.has(location)) setLocation("/dashboard");
+      if (publicPaths.has(location)) setLocation("/");
       return;
     }
     // "expired": renderiza a tela especial

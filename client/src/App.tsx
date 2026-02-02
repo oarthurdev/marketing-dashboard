@@ -52,12 +52,8 @@ function AppInner() {
           <Switch>
             {/* Public routes */}
             <Route path="/login" component={Login} />
-            <Route path="/trial-signup" component={TrialSignup} />
-            <Route path="/trial-confirmation" component={TrialConfirmation} />
-            <Route path="/pricing" component={Pricing} />
-
             {/* Protected routes */}
-            <Route path="/dashboard">
+            <Route path="/">
               <AuthGuard>
                 <div className="flex">
                   <Sidebar
@@ -85,23 +81,6 @@ function AppInner() {
                   <main className="flex-1 ml-64">
                     <div className="p-8">
                       <Campaigns />
-                    </div>
-                  </main>
-                </div>
-              </AuthGuard>
-            </Route>
-
-            <Route path="/reports">
-              <AuthGuard>
-                <div className="flex">
-                  <Sidebar
-                    connections={safeConnections}
-                    loading={isLoading}
-                    error={!!error}
-                  />
-                  <main className="flex-1 ml-64">
-                    <div className="p-8">
-                      <Reports />
                     </div>
                   </main>
                 </div>
