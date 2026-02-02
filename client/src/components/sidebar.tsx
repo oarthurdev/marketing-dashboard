@@ -77,7 +77,7 @@ export default function Sidebar({ connections }: SidebarProps) {
             <img src="https://www.atinus.com.br/imagens/icon.png" alt="Atinus company logo, white icon on gradient blue to purple background" className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-500">Atinus Dashboard</h1>
+            <h1 className="text-2xl font-bold text-black-500">Atinus</h1>
           </div>
         </div>
 
