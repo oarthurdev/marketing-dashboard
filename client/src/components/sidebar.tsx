@@ -73,11 +73,11 @@ export default function Sidebar({ connections }: SidebarProps) {
       {/* Logo */}
       <div className="px-6 py-4">
         <div className="flex items-center space-x-3 mb-4">
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-xl">
-            <TrendingUp className="w-6 h-6 text-white" />
+          <div className="bg-gradient-to-r from-black-600 to-white-600 p-2 rounded-xl">
+            <img src="https://www.atinus.com.br/imagens/icon.png" alt="Atinus company logo, white icon on gradient blue to purple background" className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-500">Analytics Dashboard</h1>
+            <h1 className="text-xl font-bold text-gray-500">Atinus Dashboard</h1>
           </div>
         </div>
 
@@ -116,18 +116,6 @@ export default function Sidebar({ connections }: SidebarProps) {
           >
             <Target className="w-5 h-5 mr-3" />
             Campanhas
-          </Link>
-
-          <Link
-            href="/reports"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
-              isActive("/reports")
-                ? "text-gray-900 bg-blue-50 border-l-4 border-blue-500"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-            }`}
-          >
-            <FileText className="w-5 h-5 mr-3" />
-            Reports
           </Link>
         </div>
         {/* Bottom section with logout */}

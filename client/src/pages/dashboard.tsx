@@ -215,7 +215,7 @@ export default function Dashboard() {
   const daysForTitle = dateRange === "7" ? 7 : dateRange === "90" ? 90 : dateRange === "365" ? 365 : 30;
 
   return (
-    <div className="min-h-screen bg-mesh" data-testid="dashboard-layout">
+    <div data-testid="dashboard-layout">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border" data-testid="dashboard-header">
         <div className="container mx-auto px-6 py-4">
@@ -247,8 +247,8 @@ export default function Dashboard() {
       <br />
       <div className="container mx-auto px-6 py-8 space-y-8">
         {/* Funil de Vendas */}
-        <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold">Funil de Vendas</h2>
+        <div className="flex items-center mb-4">
+        <h2 className="text-xl font-semibold" style={{marginRight: "1rem"}}>Período</h2>
 
         <Select value={funnelRange} onValueChange={(v) => setFunnelRange(v as any)}>
           <SelectTrigger className="w-40">
