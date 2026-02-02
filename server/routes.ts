@@ -66,8 +66,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           year: "numeric",
         });
       } else {
+        const now = new Date();
+
         const start = new Date(now);
-        start.setDate(now.getDate() - 6);
+        const dayOfWeek = now.getDay(); // 0 = domingo
+        start.setDate(now.getDate() - dayOfWeek);
+
         rangeLabel = `${start.toLocaleDateString("pt-BR")} A ${now.toLocaleDateString("pt-BR")}`;
       }
 

@@ -109,7 +109,7 @@ interface KommoStatus {
 export default function Dashboard() {
   const [dateRange, setDateRange] = useState("7");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [funnelRange, setFunnelRange] = useState<"daily" | "weekly" | "monthly">("weekly");
+  const [funnelRange, setFunnelRange] = useState<"daily" | "weekly" | "monthly">("daily");
 
   const { data: funnelData } = useQuery({
     queryKey: ["sales-funnel", funnelRange],

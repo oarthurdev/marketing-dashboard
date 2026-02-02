@@ -76,14 +76,17 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
   return (
     <div
       ref={containerRef}
-      className={`relative rounded-2xl border bg-white shadow-xl ${className || ""}`}
+      className={`relative rounded-2xl border border-slate-200/70 
+        bg-gradient-to-b from-white to-slate-50 
+        shadow-[0_10px_30px_rgba(15,23,42,0.08)] 
+        ${className || ""}`}
     >
       {/* Header */}
       <div className="px-6 pt-6 pb-2">
-        <h2 className="text-xl font-extrabold tracking-tight text-slate-900">
+        <h2 className="text-lg font-semibold tracking-tight text-slate-900">
           Funil de Vendas {rangeLabel && `• ${rangeLabel}`}
         </h2>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-500 leading-relaxed">
           Passe o mouse para ver detalhes
         </p>
       </div>
@@ -92,7 +95,7 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
       <div className="px-4 pb-6">
         <motion.svg
           viewBox="0 0 1000 520"
-          className="w-full h-[420px]"
+          className="w-full h-[520px] select-none"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
@@ -133,10 +136,10 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
               key={label as string}
               x="60"
               y={y as number}
-              fontSize="24"
-              fontWeight="800"
-              fill="#020617"
-              letterSpacing="0.08em"
+              fontSize="22"
+              fontWeight="700"
+              fill="#334155"
+              letterSpacing="0.12em"
             >
               {label}
             </text>
@@ -151,9 +154,9 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
               x="940"
               y={[140, 220, 300, 380, 460][i]}
               textAnchor="end"
-              fontSize="22"
-              fontWeight="800"
-              fill="#020617"
+              fontSize="20"
+              fontWeight="700"
+              fill="#0F172A"
             >
               {formatPct(stages[k].pct)}
             </text>
@@ -199,7 +202,7 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
             />
             <text
               x="510"
-              y="270"
+              y="220"
               textAnchor="middle"
               fontSize="30"
               fontWeight="900"
@@ -214,14 +217,13 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
             onMouseMove={onMove("visits")}
             onMouseLeave={() => setTip(null)}
           >
-            <circle cx="510" cy="330" r="16" fill="#CBD5E1" />
             <text
               x="510"
-              y="370"
+              y="300"
               textAnchor="middle"
-              fontSize="22"
+              fontSize="26"
               fontWeight="800"
-              fill="#020617"
+              fill="#F8FAFC"
             >
               {formatInt(stages.visits.value)}
             </text>
@@ -233,7 +235,7 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
             onMouseLeave={() => setTip(null)}
           >
             <text
-              x="580"
+              x="500"
               y="390"
               fontSize="26"
               fontWeight="900"
@@ -249,7 +251,7 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
             onMouseLeave={() => setTip(null)}
           >
             <text
-              x="580"
+              x="500"
               y="470"
               fontSize="26"
               fontWeight="900"
@@ -264,14 +266,18 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
       {/* Tooltip */}
       {tip && (
         <div
-          className="pointer-events-none absolute z-50 rounded-xl border bg-white px-4 py-3 shadow-xl"
+          className="pointer-events-none absolute z-50 
+            rounded-xl border border-slate-200/70 
+            bg-white/95 backdrop-blur-sm 
+            px-4 py-3 
+            shadow-[0_12px_32px_rgba(15,23,42,0.18)]"
           style={{
             left: tip.x,
             top: tip.y,
             transform: "translate(12px,-12px)",
           }}
         >
-          <div className="text-xs font-bold tracking-wide text-slate-500">
+          <div className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">
             {stages[tip.key].label}
           </div>
           <div className="text-2xl font-black text-slate-900">
