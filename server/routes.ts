@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { DataProcessor } from "./services/dataProcessor";
 import { ReportGenerator } from "./services/reportGenerator";
 import schedule from "node-schedule"; // Changed from node-cron to node-schedule for potential consistency, assuming it's a typo in the original or a preferred choice. If node-cron is strictly required, revert this.
-import { getLeadsByRange, getOpportunitiesByRange } from "./helpers/getStateByRange.js";
+import { getLeadsByRange, getOpportunitiesByRange, getVisitasAgendadasByRange, getVisitasRealizadasByRange, getReservaByRange, getVendaByRange } from "./helpers/getStateByRange.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const dataProcessor = new DataProcessor();
@@ -69,7 +69,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const now = new Date();
 
         const start = new Date(now);
-        const dayOfWeek = now.getDay(); // 0 = domingo
+        const dayOfWeek = now.getDay() - 1; // 0 = domingo
         start.setDate(now.getDate() - dayOfWeek);
 
         rangeLabel = `${start.toLocaleDateString("pt-BR")} A ${now.toLocaleDateString("pt-BR")}`;
@@ -83,12 +83,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return acc + Number(getOpportunitiesByRange(c, range));
       }, 0);
 
+      const visitsA = campaigns.reduce((acc, c) => {
+        return acc + Number(getVisitasAgendadasByRange(c, range));
+      }, 0);
+
+      const visitsR = campaigns.reduce((acc, c) => {
+        return acc + Number(getVisitasRealizadasByRange(c, range));
+      }, 0);
+
+      const reservations = campaigns.reduce((acc, c) => {
+        return acc + Number(getReservaByRange(c, range));
+      }, 0);
+
+      const sales = campaigns.reduce((acc, c) => {
+        return acc + Number(getVendaByRange(c, range));
+      }, 0);
+
       const funnel = {
         leads,
         opportunities,
-        visits: Math.round(opportunities * 0.6),
-        reservations: Math.round(opportunities * 0.35),
-        sales: Math.round(opportunities * 0.25),
+        visitsA: visitsA,
+        visitsR: visitsR,
+        reservations: reservations,
+        sales: sales,
       };
 
       res.json({

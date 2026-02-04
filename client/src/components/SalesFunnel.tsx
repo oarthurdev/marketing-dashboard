@@ -4,14 +4,16 @@ import { motion } from "framer-motion";
 type FunnelStageKey =
   | "leads"
   | "opportunities"
-  | "visits"
+  | "visitsA"
+  | "visitsR"
   | "reservations"
   | "sales";
 
 export type SalesFunnelData = {
   leads: number;
   opportunities: number;
-  visits: number;
+  visitsA: number;
+  visitsR: number;
   reservations: number;
   sales: number;
 };
@@ -52,7 +54,8 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
         value: data.opportunities,
         pct: pct(data.opportunities),
       },
-      visits: { label: "VISITAS", value: data.visits, pct: pct(data.visits) },
+      visitsA: { label: "VISITAS AGEND.", value: data.visitsA, pct: pct(data.visitsA) },
+      visitsR: { label: "VISITAS REALIZ.", value: data.visitsR, pct: pct(data.visitsR) },
       reservations: {
         label: "RESERVA",
         value: data.reservations,
@@ -128,9 +131,10 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
           {[
             ["LEADS", 140],
             ["OPORTUNIDADES", 220],
-            ["VISITAS", 300],
-            ["RESERVA", 380],
-            ["VENDA", 460],
+            ["VISITAS AGEND.", 300],
+            ["VISITAS REALIZ.", 360],
+            ["RESERVA", 420],
+            ["VENDA", 480],
           ].map(([label, y]) => (
             <text
               key={label as string}
@@ -152,7 +156,7 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
             <text
               key={k}
               x="940"
-              y={[140, 220, 300, 380, 460][i]}
+              y={[140, 220, 300, 360, 420, 480][i]}
               textAnchor="end"
               fontSize="20"
               fontWeight="700"
@@ -212,9 +216,9 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
             </text>
           </motion.g>
 
-          {/* VISITAS */}
+          {/* VISITAS AGENDADAS */}
           <motion.g
-            onMouseMove={onMove("visits")}
+            onMouseMove={onMove("visitsA")}
             onMouseLeave={() => setTip(null)}
           >
             <text
@@ -225,7 +229,23 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
               fontWeight="800"
               fill="#F8FAFC"
             >
-              {formatInt(stages.visits.value)}
+              {formatInt(stages.visitsA.value)}
+            </text>
+          </motion.g>
+
+          <motion.g
+            onMouseMove={onMove("visitsR")}
+            onMouseLeave={() => setTip(null)}
+          >
+            <text
+              x="510"
+              y="360"
+              textAnchor="middle"
+              fontSize="26"
+              fontWeight="800"
+              fill="#F8FAFC"
+            >
+              {formatInt(stages.visitsR.value)}
             </text>
           </motion.g>
 
@@ -236,7 +256,7 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
           >
             <text
               x="500"
-              y="390"
+              y="420"
               fontSize="26"
               fontWeight="900"
               fill="#020617"
@@ -252,7 +272,7 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
           >
             <text
               x="500"
-              y="470"
+              y="480"
               fontSize="26"
               fontWeight="900"
               fill="#020617"
