@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, numeric, index, timestamp, jsonb, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, numeric, index, timestamp, jsonb, boolean , serial} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -12,6 +12,29 @@ export const metrics = pgTable("metrics", {
   avgCPA: decimal("avg_cpa", { precision: 10, scale: 2 }).notNull().default("0.00"),
   leadSources: jsonb("lead_sources").$type<Record<string, number>>().notNull().default({}),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const leadClosingTime = pgTable("lead_closing_time", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id").notNull(),
+  closingDays: integer("closing_days").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const leadStageCounts = pgTable("lead_stage_counts", {
+  id: serial("id").primaryKey(),
+  pipelineId: integer("pipeline_id").notNull(),
+  stageId: integer("stage_id").notNull(),
+  stageName: varchar("stage_name", { length: 255 }).notNull(),
+  leadsCount: integer("leads_count").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
 export const campaigns = pgTable("campaigns", {
@@ -192,3 +215,7 @@ export type Campaign = typeof campaigns.$inferSelect;
 export type Activity = typeof activities.$inferSelect;
 export type ApiConnection = typeof apiConnections.$inferSelect;
 export type Report = typeof reports.$inferSelect;
+export type LeadClosingTime = typeof leadClosingTime.$inferSelect;
+export type NewLeadClosingTime = typeof leadClosingTime.$inferInsert;
+export type LeadStageCount = typeof leadStageCounts.$inferSelect;
+export type NewLeadStageCount = typeof leadStageCounts.$inferInsert;

@@ -1,7 +1,7 @@
 import { db } from './db';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, avg } from 'drizzle-orm';
 import { 
-  metrics, campaigns, ads, adsets, activities, apiConnections, reports,
+  metrics, campaigns, ads, adsets, activities, apiConnections, reports, leadStageCounts, LeadStageCount, leadClosingTime,
   type Metrics, type InsertMetrics, 
   type Campaign, type InsertCampaign,
   type Activity, type InsertActivity,
@@ -56,6 +56,8 @@ class HybridStorage implements IStorage {
   private memoryActivities = new Map<string, Activity>();
   private memoryApiConnections = new Map<string, ApiConnection>();
   private memoryReports = new Map<string, Report>();
+  private memoryStageCounts = new Map<number, LeadStageCount[]>();
+  private memoryAvgClosingTime = 0;
   private isDatabaseAvailable = true;
 
   constructor() {
@@ -135,6 +137,58 @@ class HybridStorage implements IStorage {
       .slice(0, limit);
   }
 
+  // 🔹 Leads por etapa (pipeline)
+  async getLeadsByStage(
+    pipelineId: number
+  ): Promise<LeadStageCount[]> {
+    if (this.isDatabaseAvailable) {
+      try {
+        return await db
+          .select()
+          .from(leadStageCounts)
+          .where(eq(leadStageCounts.pipelineId, pipelineId))
+          .orderBy(leadStageCounts.stageId);
+      } catch (error) {
+        console.error("DB error (getLeadsByStage):", error);
+        this.isDatabaseAvailable = false;
+      }
+    }
+
+    return this.memoryStageCounts.get(pipelineId) ?? [];
+  }
+
+  // 🔹 Média de tempo de fechamento
+  async getAverageClosingTime(): Promise<number> {
+    if (this.isDatabaseAvailable) {
+      try {
+        const result = await db
+          .select({
+            avgClosingDays: avg(leadClosingTime.closingDays),
+          })
+          .from(leadClosingTime);
+
+        return Number(result[0]?.avgClosingDays ?? 0);
+      } catch (error) {
+        console.error("DB error (getAverageClosingTime):", error);
+        this.isDatabaseAvailable = false;
+      }
+    }
+
+    return this.memoryAvgClosingTime;
+  }
+
+  // 🔹 (Opcional) salvar cache em memória
+  setMemoryLeadsByStage(
+    pipelineId: number,
+    data: LeadStageCount[]
+  ) {
+    this.memoryStageCounts.set(pipelineId, data);
+  }
+
+  setMemoryAverageClosingTime(value: number) {
+    this.memoryAvgClosingTime = value;
+  }
+  
   async getLatestMetrics(): Promise<Metrics | undefined> {
     if (this.isDatabaseAvailable) {
       try {

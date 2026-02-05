@@ -35,6 +35,7 @@ function formatDateRange(days: number) {
 import { CampaignTable } from "@/components/campaign-table";
 import ActivityFeed from "@/components/activity-feed";
 import SalesFunnel from "@/components/SalesFunnel";
+import { LeadsPipelineChart } from "@/components/LeadsPipelineChart";
 
 interface DashboardData {
   totalRevenue: number;
@@ -262,12 +263,38 @@ export default function Dashboard() {
         </Select>
       </div>
 
-        {funnelData && (
-          <SalesFunnel
-            rangeLabel={funnelData.rangeLabel}
-            data={funnelData.data}
-          />
-        )}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {/* Funil de Vendas */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Funil de Vendas</CardTitle>
+              <CardDescription>
+                Conversão por etapa
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {funnelData && (
+                <SalesFunnel
+                  rangeLabel={funnelData.rangeLabel}
+                  data={funnelData.data}
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Pipeline de Leads */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Pipeline de Leads</CardTitle>
+              <CardDescription>
+                Leads por etapa e tempo médio de fechamento
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LeadsPipelineChart pipelineId={11795444} />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

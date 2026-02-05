@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { DataProcessor } from "./services/dataProcessor";
@@ -118,6 +118,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch funnel data" });
     }
   });
+
+  app.get(
+    "/api/leads-metrics/:pipelineId",
+    async (req: Request, res: Response) => {
+      const pipelineId = Number(req.params.pipelineId);
+
+      if (Number.isNaN(pipelineId)) {
+        return res.status(400).json({ error: "pipelineId inválido" });
+      }
+
+      try {
+        const [stages, avgClosingDays] = await Promise.all([
+          storage.getLeadsByStage(pipelineId),
+          storage.getAverageClosingTime(),
+        ]);
+
+        // opcional: cache em memória
+        storage.setMemoryLeadsByStage(pipelineId, stages);
+        storage.setMemoryAverageClosingTime(avgClosingDays);
+
+        res.json({
+          stages,
+          avgClosingDays,
+        });
+      } catch (error) {
+        console.error("Analytics route error:", error);
+        res.status(500).json({ error: "Erro ao buscar métricas" });
+      }
+    }
+  );
 
   app.get("/api/dashboard/campaigns", async (req, res) => {
     try {
