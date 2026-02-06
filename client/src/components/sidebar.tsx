@@ -67,25 +67,25 @@ export default function Sidebar({ connections }: SidebarProps) {
 
   return (
     <aside
-      className="w-64 bg-white shadow-sm border-r border-gray-200 fixed h-full z-10"
+      className="w-64 bg-sidebar shadow-sm border-r border-sidebar-border fixed h-full z-10"
       data-testid="sidebar"
     >
       {/* Logo */}
       <div className="px-6 py-4">
         <div className="flex items-center space-x-3 mb-4">
-          <div className="bg-gradient-to-r from-black-600 to-white-600 p-2 rounded-xl">
+          <div className="bg-gradient-to-r from-primary to-primary/80 p-2 rounded-xl">
             <img src="https://www.atinus.com.br/imagens/icon.png" alt="Atinus company logo, white icon on gradient blue to purple background" className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-black-500">Atinus</h1>
+            <h1 className="text-2xl font-bold text-foreground">Atinus</h1>
           </div>
         </div>
 
         {/* User info */}
-        <div className="bg-gray-50 rounded-lg p-3">
+        <div className="bg-popover rounded-lg p-3">
           <div className="flex items-center space-x-2 mb-2">
-            <User className="w-4 h-4 text-gray-600" />
-            <span className="text-sm font-medium text-gray-900 truncate">
+            <User className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium text-foreground truncate">
               {userEmail.split("@")[0]}
             </span>
           </div>
@@ -98,8 +98,8 @@ export default function Sidebar({ connections }: SidebarProps) {
             href="/"
             className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
               isActive("/")
-                ? "text-gray-900 bg-blue-50 border-l-4 border-blue-500"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                ? "text-foreground bg-popover border-l-4 border-sidebar-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-popover"
             }`}
           >
             <BarChart3 className="w-5 h-5 mr-3" />
@@ -110,8 +110,8 @@ export default function Sidebar({ connections }: SidebarProps) {
             href="/campaigns"
             className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
               isActive("/campaigns")
-                ? "text-gray-900 bg-blue-50 border-l-4 border-blue-500"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                ? "text-foreground bg-popover border-l-4 border-sidebar-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-popover"
             }`}
           >
             <Target className="w-5 h-5 mr-3" />
@@ -124,7 +124,7 @@ export default function Sidebar({ connections }: SidebarProps) {
           <Button
             variant="ghost"
             onClick={handleLogout}
-            className="w-full justify-start text-gray-600 hover:text-red-600 hover:bg-red-50"
+            className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-popover"
           >
             <LogOut className="w-4 h-4 mr-3" />
             Sair

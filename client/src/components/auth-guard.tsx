@@ -92,10 +92,10 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
   if (authState === "loading") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando...</p>
         </div>
       </div>
     );
@@ -107,23 +107,21 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
   if (authState === "expired") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-red-50 flex items-center justify-center p-4">
-        <Card className="max-w-lg mx-auto shadow-xl">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-lg mx-auto shadow-xl bg-card">
           <CardHeader className="text-center">
-            <div className="bg-gradient-to-r from-orange-500 to-red-500 p-3 rounded-full w-16 h-16 mx-auto mb-4">
-              <Clock className="w-10 h-10 text-white" />
+            <div className="bg-gradient-to-r from-destructive to-danger p-3 rounded-full w-16 h-16 mx-auto mb-4">
+              <Clock className="w-10 h-10 text-destructive-foreground" />
             </div>
-            <CardTitle className="text-2xl text-gray-900">
-              Teste expirado
-            </CardTitle>
-            <CardDescription className="text-gray-600">
+            <CardTitle className="text-2xl text-foreground">Teste expirado</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Seu período de teste de 7 dias chegou ao fim. Escolha um plano
               para continuar.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="text-sm text-yellow-800">
+            <div className="bg-popover border border-sidebar-border rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">
                 💡 <strong>Não perca seus dados!</strong> Escolha um plano agora
                 e continue de onde parou.
               </p>
@@ -131,7 +129,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
             <div className="space-y-3">
               <Button
                 onClick={() => setLocation("/pricing")}
-                className="w-full bg-gradient-to-r from-blue-600 to purple-600 hover:from-blue-700 hover:to-purple-700"
+                className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
               >
                 <CreditCard className="w-4 h-4 mr-2" />
                 Ver planos e assinar
