@@ -17,6 +17,7 @@ export const metrics = pgTable("metrics", {
 export const leadClosingTime = pgTable("lead_closing_time", {
   id: serial("id").primaryKey(),
   leadId: integer("lead_id").notNull(),
+  pipelineId: integer("pipeline_id").notNull(),
   closingDays: integer("closing_days").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
@@ -26,6 +27,7 @@ export const leadClosingTime = pgTable("lead_closing_time", {
 export const leadStageCounts = pgTable("lead_stage_counts", {
   id: serial("id").primaryKey(),
   pipelineId: integer("pipeline_id").notNull(),
+  pipelineName: varchar("pipeline_name", { length: 255 }).notNull(),
   stageId: integer("stage_id").notNull(),
   stageName: varchar("stage_name", { length: 255 }).notNull(),
   leadsCount: integer("leads_count").notNull(),

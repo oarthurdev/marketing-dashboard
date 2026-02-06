@@ -7,130 +7,172 @@ type Stage = {
   leadsCount: number;
 };
 
-type ApiResponse = {
-  stages: Stage[];
+type Pipeline = {
+  pipelineId: number;
+  pipelineName: string;
   avgClosingDays: number;
+  stages: Stage[];
 };
 
-export function LeadsPipelineChart({ pipelineId }: { pipelineId: number }) {
+type ApiResponse = {
+  pipelines: {
+    pipelineId: number;
+    pipelineName: string;
+    avgClosingDays: number;
+    stages: Stage[];
+  }[];
+};
+
+
+type Mode = "compact" | "detailed";
+
+export function LeadsPipelineChart({
+  mode = "detailed",
+}: {
+  mode?: Mode;
+}) {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/leads-metrics/${pipelineId}`)
+    fetch(`/api/leads-metrics`) // 🔥 agora traz tudo
       .then((res) => res.json())
       .then(setData)
       .finally(() => setLoading(false));
-  }, [pipelineId]);
+  }, []);
 
-  if (loading) {
-    return <p>Carregando pipeline...</p>;
-  }
-
-  if (!data) {
+  if (loading) return <p>Carregando pipelines...</p>;
+  if (!data || data.pipelines.length === 0)
     return <p>Sem dados disponíveis</p>;
-  }
 
-  // ✅ filtro direto, sem hook
-  const stagesWithLeads = data.stages.filter(
-    stage => stage.leadsCount > 0
-  );
-
-  if (stagesWithLeads.length === 0) {
-    return <p>Nenhuma etapa com leads nesse pipeline</p>;
-  }
-
-  const maxLeads = Math.max(
-    ...stagesWithLeads.map(stage => stage.leadsCount)
-  );
+  const isCompact = mode === "compact";
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      style={{
-        padding: 24,
-        background: "#0f172a",
-        borderRadius: 12,
-        color: "#e5e7eb",
-      }}
-    >
-      <h2 style={{ marginBottom: 20 }}>📊 Pipeline de Leads</h2>
+    <div style={{ display: "grid", gap: 24 }}>
+      {data.pipelines.map((pipeline) => {
+        const stages = pipeline.stages.filter(
+          (s) => s.leadsCount > 0
+        );
+        if (stages.length === 0) return null;
 
-      {/* Média de fechamento */}
-      <div
-        style={{
-          background: "#020617",
-          padding: 14,
-          borderRadius: 10,
-          marginBottom: 24,
-          fontSize: 14,
-        }}
-      >
-        ⏱️ Tempo médio de fechamento:{" "}
-        <strong>{data.avgClosingDays.toFixed(1)} dias</strong>
-      </div>
+        const maxLeads = Math.max(
+          ...stages.map((s) => s.leadsCount)
+        );
 
-      {/* Gráfico */}
-      <div
-        style={{
-          display: "flex",
-          gap: 24,
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-        }}
-      >
-        {stagesWithLeads.map((stage, index) => {
-          const height = (stage.leadsCount / maxLeads) * 220;
-
-          return (
+        return (
+          <motion.div
+            key={pipeline.pipelineId}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              padding: isCompact ? 16 : 24,
+              background: "#0f172a",
+              borderRadius: 12,
+              color: "#e5e7eb",
+            }}
+          >
+            {/* header do pipeline */}
             <div
-              key={stage.stageId}
               style={{
                 display: "flex",
-                flexDirection: "column",
+                justifyContent: "space-between",
                 alignItems: "center",
-                flex: 1,
-                minWidth: 60,
-                maxWidth: 120,
+                marginBottom: isCompact ? 12 : 20,
               }}
             >
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height, opacity: 1 }}
-                transition={{
-                  duration: 0.6,
-                  delay: index * 0.05,
-                  ease: "easeOut",
-                }}
-                style={{
-                  width: "100%",
-                  background:
-                    "linear-gradient(180deg, #38bdf8, #2563eb)",
-                  borderRadius: 8,
-                  marginBottom: 8,
-                }}
-              />
+              <h3 style={{ fontSize: isCompact ? 14 : 16 }}>
+                📊 {pipeline.pipelineName}
+              </h3>
 
-              <strong style={{ fontSize: 13 }}>
-                {stage.leadsCount}
-              </strong>
-
-              <span
-                style={{
-                  fontSize: 11,
-                  opacity: 0.75,
-                  marginTop: 4,
-                  textAlign: "center",
-                }}
-              >
-                {stage.stageName}
-              </span>
+              {!isCompact && (
+                <span
+                  style={{
+                    fontSize: 13,
+                    opacity: 0.8,
+                  }}
+                >
+                  ⏱️ {pipeline.avgClosingDays.toFixed(1)} dias
+                </span>
+              )}
             </div>
-          );
-        })}
-      </div>
-    </motion.div>
+
+            {/* gráfico */}
+            <div
+              style={{
+                display: "flex",
+                gap: isCompact ? 12 : 24,
+                alignItems: "flex-end",
+                justifyContent: "space-between",
+              }}
+            >
+              {stages.map((stage, index) => {
+                const height =
+                  (stage.leadsCount / maxLeads) *
+                  (isCompact ? 120 : 200);
+
+                return (
+                  <div
+                    key={stage.stageId}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      flex: 1,
+                      maxWidth: isCompact ? 70 : 120,
+                    }}
+                  >
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height, opacity: 1 }}
+                      transition={{
+                        duration: 0.4,
+                        delay: index * 0.03,
+                        ease: "easeOut",
+                      }}
+                      style={{
+                        width: "100%",
+                        background:
+                          "linear-gradient(180deg, #38bdf8, #2563eb)",
+                        borderRadius: 6,
+                        marginBottom: 6,
+                      }}
+                    />
+
+                    <strong
+                      style={{
+                        fontSize: isCompact ? 12 : 14,
+                      }}
+                    >
+                      {stage.leadsCount}
+                    </strong>
+
+                    <span
+                      title={stage.stageName}
+                      style={{
+                        fontSize: isCompact ? 10 : 12,
+                        opacity: 0.75,
+                        marginTop: 4,
+                        textAlign: "center",
+                        whiteSpace: isCompact
+                          ? "nowrap"
+                          : "normal",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        maxWidth: "100%",
+                      }}
+                    >
+                      {isCompact
+                        ? stage.stageName.slice(0, 10)
+                        : stage.stageName}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        );
+      })}
+    </div>
   );
 }

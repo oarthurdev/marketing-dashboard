@@ -36,6 +36,7 @@ import { CampaignTable } from "@/components/campaign-table";
 import ActivityFeed from "@/components/activity-feed";
 import SalesFunnel from "@/components/SalesFunnel";
 import { LeadsPipelineChart } from "@/components/LeadsPipelineChart";
+import ThemeToggle from "@/components/ui/theme-toggle";
 
 interface DashboardData {
   totalRevenue: number;
@@ -242,6 +243,9 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+            <div className="flex items-center space-x-4">
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>
@@ -291,7 +295,7 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <LeadsPipelineChart pipelineId={11795444} />
+              <LeadsPipelineChart />
             </CardContent>
           </Card>
         </div>

@@ -22,6 +22,11 @@ type CampaignHierarchy = CampaignRow & {
   >;
 };
 
+type PipelineSummary = {
+  pipelineId: number;
+  pipelineName: string;
+};
+
 export interface IStorage {
   // Metrics
   getMetrics(limit?: number): Promise<Metrics[]>;
@@ -57,6 +62,9 @@ class HybridStorage implements IStorage {
   private memoryApiConnections = new Map<string, ApiConnection>();
   private memoryReports = new Map<string, Report>();
   private memoryStageCounts = new Map<number, LeadStageCount[]>();
+  private pipelinesCache: PipelineSummary[] | null = null;
+  private pipelinesCacheAt: number | null = null
+  private memoryAvgClosingTimeByPipeline = new Map<number, number>();
   private memoryAvgClosingTime = 0;
   private isDatabaseAvailable = true;
 
@@ -157,24 +165,90 @@ class HybridStorage implements IStorage {
     return this.memoryStageCounts.get(pipelineId) ?? [];
   }
 
-  // 🔹 Média de tempo de fechamento
-  async getAverageClosingTime(): Promise<number> {
+  async getAllPipelines(): Promise<PipelineSummary[]> {
     if (this.isDatabaseAvailable) {
       try {
-        const result = await db
+        const rows = await db
+          .select({
+            pipelineId: leadStageCounts.pipelineId,
+            pipelineName: leadStageCounts.pipelineName,
+          })
+          .from(leadStageCounts)
+          .groupBy(
+            leadStageCounts.pipelineId,
+            leadStageCounts.pipelineName
+          )
+          .orderBy(leadStageCounts.pipelineName);
+
+        return rows;
+      } catch (error) {
+        console.error(
+          "Database error on getAllPipelines, falling back to memory:",
+          error
+        );
+        this.isDatabaseAvailable = false;
+      }
+    }
+
+    // 🧠 fallback em memória
+    const pipelinesMap = new Map<number, PipelineSummary>();
+
+    Array.from(this.memoryStageCounts.values()).forEach(items => {
+      items.forEach(item => {
+        if (!pipelinesMap.has(item.pipelineId)) {
+          pipelinesMap.set(item.pipelineId, {
+            pipelineId: item.pipelineId,
+            pipelineName: item.pipelineName,
+          });
+        }
+      });
+    });
+
+    return Array.from(pipelinesMap.values()).sort((a, b) =>
+      a.pipelineName.localeCompare(b.pipelineName)
+    );
+  }
+
+  // 🔹 Média de tempo de fechamento
+  async getAverageClosingTime(
+    pipelineId?: number
+  ): Promise<number> {
+    if (this.isDatabaseAvailable) {
+      try {
+        let query = db
           .select({
             avgClosingDays: avg(leadClosingTime.closingDays),
           })
           .from(leadClosingTime);
 
+        // 🎯 reatribuição obrigatória no Drizzle
+        if (pipelineId !== undefined) {
+          query = query.where(
+            eq(leadClosingTime.pipelineId, pipelineId)
+          );
+        }
+
+        const result = await query;
+
         return Number(result[0]?.avgClosingDays ?? 0);
       } catch (error) {
-        console.error("DB error (getAverageClosingTime):", error);
+        console.error(
+          "DB error (getAverageClosingTime), falling back to memory:",
+          error
+        );
         this.isDatabaseAvailable = false;
       }
     }
 
-    return this.memoryAvgClosingTime;
+    // 🧠 fallback em memória
+    if (
+      pipelineId !== undefined &&
+      this.memoryAvgClosingTimeByPipeline?.has(pipelineId)
+    ) {
+      return this.memoryAvgClosingTimeByPipeline.get(pipelineId)!;
+    }
+
+    return this.memoryAvgClosingTime ?? 0;
   }
 
   // 🔹 (Opcional) salvar cache em memória
@@ -185,9 +259,16 @@ class HybridStorage implements IStorage {
     this.memoryStageCounts.set(pipelineId, data);
   }
 
-  setMemoryAverageClosingTime(value: number) {
-    this.memoryAvgClosingTime = value;
-  }
+    setMemoryAverageClosingTime(
+      avg: number,
+      pipelineId?: number
+    ) {
+      if (pipelineId) {
+        this.memoryAvgClosingTimeByPipeline.set(pipelineId, avg);
+      } else {
+        this.memoryAvgClosingTime = avg;
+      }
+    }
   
   async getLatestMetrics(): Promise<Metrics | undefined> {
     if (this.isDatabaseAvailable) {

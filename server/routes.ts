@@ -120,31 +120,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get(
-    "/api/leads-metrics/:pipelineId",
-    async (req: Request, res: Response) => {
-      const pipelineId = Number(req.params.pipelineId);
-
-      if (Number.isNaN(pipelineId)) {
-        return res.status(400).json({ error: "pipelineId inválido" });
-      }
-
+    "/api/leads-metrics",
+    async (_req: Request, res: Response) => {
       try {
-        const [stages, avgClosingDays] = await Promise.all([
-          storage.getLeadsByStage(pipelineId),
-          storage.getAverageClosingTime(),
-        ]);
+        /**
+         * Esperado do storage:
+         * - getAllPipelines()
+         * - getLeadsByStage(pipelineId)
+         * - getAverageClosingTime(pipelineId?) ou global
+         */
 
-        // opcional: cache em memória
-        storage.setMemoryLeadsByStage(pipelineId, stages);
-        storage.setMemoryAverageClosingTime(avgClosingDays);
+        const pipelines = await storage.getAllPipelines();
 
-        res.json({
-          stages,
-          avgClosingDays,
-        });
+        const result = await Promise.all(
+          pipelines.map(async (pipeline) => {
+            const pipelineId = Number(pipeline.pipelineId);
+
+            const [stages, avgClosingDays] = await Promise.all([
+              storage.getLeadsByStage(pipelineId),
+              storage.getAverageClosingTime(pipelineId), // 👈 ideal por pipeline
+            ]);
+
+            // cache opcional
+            storage.setMemoryLeadsByStage(pipelineId, stages);
+            storage.setMemoryAverageClosingTime(
+              pipelineId,
+              avgClosingDays
+            );
+
+            return {
+              pipelineId,
+              pipelineName: pipeline.pipelineName,
+              avgClosingDays,
+              stages,
+            };
+          })
+        );
+
+        res.json({ pipelines: result });
       } catch (error) {
         console.error("Analytics route error:", error);
-        res.status(500).json({ error: "Erro ao buscar métricas" });
+        res.status(500).json({
+          error: "Erro ao buscar métricas de pipelines",
+        });
       }
     }
   );
