@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type FunnelStageKey =
   | "leads"
@@ -18,10 +19,14 @@ export type SalesFunnelData = {
   sales: number;
 };
 
+type Range = "daily" | "weekly" | "monthly";
+
 type Props = {
   data: SalesFunnelData;
   rangeLabel?: string;
   className?: string;
+  funnelRange?: Range;
+  setFunnelRange?: (v: Range) => void;
 };
 
 type TooltipState = {
@@ -39,7 +44,7 @@ const formatInt = (n: number) =>
 const formatPct = (n: number) =>
   `${Math.round(n)}%`;
 
-export default function SalesFunnel({ data, rangeLabel, className }: Props) {
+export default function SalesFunnel({ data, rangeLabel, className, funnelRange, setFunnelRange }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [tip, setTip] = useState<TooltipState | null>(null);
 
@@ -86,12 +91,31 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
     >
       {/* Header */}
       <div className="px-6 pt-6 pb-2">
-        <h2 className="text-lg font-semibold tracking-tight text-slate-900">
-          Funil de Vendas {rangeLabel && `• ${rangeLabel}`}
-        </h2>
-        <p className="text-xs text-slate-500 leading-relaxed">
-          Passe o mouse para ver detalhes
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">
+              Funil de Vendas {rangeLabel && `• ${rangeLabel}`}
+            </h2>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Passe o mouse para ver detalhes
+            </p>
+          </div>
+
+          {setFunnelRange && (
+            <div className="ml-4">
+              <Select value={funnelRange} onValueChange={(v) => setFunnelRange(v as Range)}>
+                <SelectTrigger className="w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Diário</SelectItem>
+                  <SelectItem value="weekly">Semanal</SelectItem>
+                  <SelectItem value="monthly">Mensal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Funnel */}

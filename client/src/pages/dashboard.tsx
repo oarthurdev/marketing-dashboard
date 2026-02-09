@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// Select moved into SalesFunnel component
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { 
@@ -252,20 +252,7 @@ export default function Dashboard() {
       <br />
       <div className="container mx-auto px-6 py-8 space-y-8">
         {/* Funil de Vendas */}
-        <div className="flex items-center mb-4">
-        <h2 className="text-xl font-semibold" style={{marginRight: "1rem"}}>Período</h2>
-
-        <Select value={funnelRange} onValueChange={(v) => setFunnelRange(v as any)}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="daily">Diário</SelectItem>
-            <SelectItem value="weekly">Semanal</SelectItem>
-            <SelectItem value="monthly">Mensal</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+        {/* Período select moved into SalesFunnel (aligned right) */}
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {/* Funil de Vendas */}
@@ -281,6 +268,8 @@ export default function Dashboard() {
                 <SalesFunnel
                   rangeLabel={funnelData.rangeLabel}
                   data={funnelData.data}
+                  funnelRange={funnelRange as any}
+                  setFunnelRange={setFunnelRange as any}
                 />
               )}
             </CardContent>
