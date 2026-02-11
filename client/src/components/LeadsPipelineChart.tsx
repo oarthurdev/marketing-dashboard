@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 
@@ -23,7 +24,6 @@ type ApiResponse = {
   }[];
 };
 
-
 type Mode = "compact" | "detailed";
 
 export function LeadsPipelineChart({
@@ -36,7 +36,7 @@ export function LeadsPipelineChart({
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/leads-metrics`) // 🔥 agora traz tudo
+    fetch(`/api/leads-metrics`)
       .then((res) => res.json())
       .then(setData)
       .finally(() => setLoading(false));
@@ -49,7 +49,7 @@ export function LeadsPipelineChart({
   const isCompact = mode === "compact";
 
   return (
-    <div style={{ display: "grid", gap: 24 }}>
+    <div style={{ display: "block", maxWidth: "100%" }}>
       {data.pipelines.map((pipeline) => {
         const stages = pipeline.stages.filter(
           (s) => s.leadsCount > 0
@@ -59,6 +59,8 @@ export function LeadsPipelineChart({
         const maxLeads = Math.max(
           ...stages.map((s) => s.leadsCount)
         );
+
+        const maxHeight = isCompact ? 120 : 200;
 
         return (
           <motion.div
@@ -70,9 +72,14 @@ export function LeadsPipelineChart({
               background: "#0f172a",
               borderRadius: 12,
               color: "#e5e7eb",
+              marginBottom: isCompact ? 16 : 32,
+              boxShadow:
+                "0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06)",
+              maxWidth: "100%",
+              overflow: "hidden",
             }}
           >
-            {/* header do pipeline */}
+            {/* header */}
             <div
               style={{
                 display: "flex",
@@ -97,78 +104,89 @@ export function LeadsPipelineChart({
               )}
             </div>
 
-            {/* gráfico */}
-            <div
-              style={{
-                display: "flex",
-                gap: isCompact ? 12 : 24,
-                alignItems: "flex-end",
-                justifyContent: "space-between",
-              }}
-            >
-              {stages.map((stage, index) => {
-                const height =
-                  (stage.leadsCount / maxLeads) *
-                  (isCompact ? 120 : 200);
+            {/* gráfico scrollável */}
+              <div
+                className="chart-scroll"
+                style={{
+                  overflowX: "auto",
+                  overflowY: "hidden",
+                  maxWidth: "100%",
+                }}
+              >
+              <div
+                style={{
+                  display: "flex",
+                  gap: isCompact ? 12 : 24,
+                  alignItems: "flex-end",
+                  minWidth: "fit-content",
+                  height: maxHeight + 40,
+                }}
+              >
+                {stages.map((stage, index) => {
+                  const height = Math.min(
+                    (stage.leadsCount / maxLeads) * maxHeight,
+                    maxHeight
+                  );
 
-                return (
-                  <div
-                    key={stage.stageId}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      flex: 1,
-                      maxWidth: isCompact ? 70 : 120,
-                    }}
-                  >
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height, opacity: 1 }}
-                      transition={{
-                        duration: 0.4,
-                        delay: index * 0.03,
-                        ease: "easeOut",
-                      }}
+                  return (
+                    <div
+                      key={stage.stageId}
                       style={{
-                        width: "100%",
-                        background:
-                          "linear-gradient(180deg, #38bdf8, #2563eb)",
-                        borderRadius: 6,
-                        marginBottom: 6,
-                      }}
-                    />
-
-                    <strong
-                      style={{
-                        fontSize: isCompact ? 12 : 14,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        flex: "0 0 auto",
+                        width: isCompact ? 60 : 90,
                       }}
                     >
-                      {stage.leadsCount}
-                    </strong>
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height, opacity: 1 }}
+                        transition={{
+                          duration: 0.4,
+                          delay: index * 0.03,
+                          ease: "easeOut",
+                        }}
+                        style={{
+                          width: "100%",
+                          background:
+                            "linear-gradient(180deg, #38bdf8, #2563eb)",
+                          borderRadius: 6,
+                          marginBottom: 6,
+                        }}
+                      />
 
-                    <span
-                      title={stage.stageName}
-                      style={{
-                        fontSize: isCompact ? 10 : 12,
-                        opacity: 0.75,
-                        marginTop: 4,
-                        textAlign: "center",
-                        whiteSpace: isCompact
-                          ? "nowrap"
-                          : "normal",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        maxWidth: "100%",
-                      }}
-                    >
-                      {isCompact
-                        ? stage.stageName.slice(0, 10)
-                        : stage.stageName}
-                    </span>
-                  </div>
-                );
-              })}
+                      <strong
+                        style={{
+                          fontSize: isCompact ? 12 : 14,
+                        }}
+                      >
+                        {stage.leadsCount}
+                      </strong>
+
+                      <span
+                        title={stage.stageName}
+                        style={{
+                          fontSize: isCompact ? 10 : 12,
+                          opacity: 0.75,
+                          marginTop: 4,
+                          textAlign: "center",
+                          whiteSpace: isCompact
+                            ? "nowrap"
+                            : "normal",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          maxWidth: "100%",
+                        }}
+                      >
+                        {isCompact
+                          ? stage.stageName.slice(0, 10)
+                          : stage.stageName}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </motion.div>
         );
