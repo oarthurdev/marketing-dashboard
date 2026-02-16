@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, numeric, timestamp, boolean, jsonb, integer, index, foreignKey, uniqueIndex, unique, bigserial, bigint, serial } from "drizzle-orm/pg-core"
+import { pgTable, varchar, text, numeric, timestamp, boolean, jsonb, integer, time, index, foreignKey, unique } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 
@@ -23,7 +23,7 @@ export const apiConnections = pgTable("api_connections", {
 export const metrics = pgTable("metrics", {
 	id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
 	date: timestamp({ mode: 'string' }).defaultNow().notNull(),
-	totalLeads: integer("total_leads").default(0).notNull(),
+	totalLeads: integer("total_leads"),
 	conversionRate: numeric("conversion_rate", { precision: 5, scale:  2 }).default('0.00').notNull(),
 	dailyRevenue: numeric("daily_revenue", { precision: 12, scale:  2 }).default('0.00').notNull(),
 	avgCpa: numeric("avg_cpa", { precision: 10, scale:  2 }).default('0.00').notNull(),
@@ -39,6 +39,129 @@ export const reports = pgTable("reports", {
 	data: jsonb().default({}).notNull(),
 	generatedAt: timestamp("generated_at", { mode: 'string' }).defaultNow(),
 });
+
+export const campaigns = pgTable("campaigns", {
+	name: text().notNull(),
+	platform: text().notNull(),
+	leadsMonthly: integer("leads_monthly"),
+	spend: numeric({ precision: 12, scale:  2 }).default('0.00').notNull(),
+	roi: numeric({ precision: 8, scale:  2 }).default('0.00').notNull(),
+	status: text().default('active').notNull(),
+	startDate: timestamp("start_date", { mode: 'string' }),
+	endDate: timestamp("end_date", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+	id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
+	leadsWeekly: integer("leads_weekly"),
+	leadsDaily: integer("leads_daily"),
+	monthlyOportunity: integer("monthly_oportunity"),
+	weeklyOportunity: integer("weekly_oportunity"),
+	dailyOportunity: integer("daily_oportunity"),
+	leadsVisitaAgendadaDaily: integer("leads_visita_agendada_daily"),
+	leadsVisitaRealizadaDaily: integer("leads_visita_realizada_daily"),
+	leadsReservaDaily: integer("leads_reserva_daily"),
+	leadsVendaDaily: integer("leads_venda_daily"),
+	leadsVisitaAgendadaWeekly: integer("leads_visita_agendada_weekly"),
+	leadsVisitaRealizadaWeekly: integer("leads_visita_realizada_weekly"),
+	leadsReservaWeekly: integer("leads_reserva_weekly"),
+	leadsVendaWeekly: integer("leads_venda_weekly"),
+	leadsVisitaAgendadaMonthly: integer("leads_visita_agendada_monthly"),
+	leadsVisitaRealizadaMonthly: integer("leads_visita_realizada_monthly"),
+	leadsReservaMonthly: integer("leads_reserva_monthly"),
+	leadsVendaMonthly: integer("leads_venda_monthly"),
+	updatedAt: time("updated_at"),
+	sourceApp: text("source_app"),
+	sourceType: text("source_type"),
+	sourceUrl: text("source_url"),
+	title: text(),
+	body: text(),
+	effectiveStatus: text("effective_status"),
+	isArchived: boolean("is_archived"),
+	objective: text(),
+	buyingType: text("buying_type"),
+	clicksLast30D: numeric("clicks_last_30d"),
+	cpa: numeric(),
+	revenue: numeric({ precision: 14, scale:  2 }),
+	roas: numeric({ precision: 8, scale:  2 }),
+	profit: numeric(),
+});
+
+export const adsets = pgTable("adsets", {
+	id: varchar({ length: 255 }).primaryKey().notNull(),
+	campaignId: varchar("campaign_id", { length: 255 }).notNull(),
+	name: text(),
+	platform: text().default('meta'),
+	status: text(),
+	effectiveStatus: text("effective_status"),
+	isArchived: boolean("is_archived").default(false),
+	startDate: timestamp("start_date", { mode: 'string' }),
+	endDate: timestamp("end_date", { mode: 'string' }),
+	spend: numeric({ precision: 12, scale:  2 }).default('0'),
+	clicksLast30D: integer("clicks_last_30d").default(0),
+	impressionsLast30D: integer("impressions_last_30d").default(0),
+	ctrLast30D: numeric("ctr_last_30d", { precision: 10, scale:  4 }),
+	cpcLast30D: numeric("cpc_last_30d", { precision: 12, scale:  4 }),
+	cpa: numeric({ precision: 12, scale:  4 }),
+	leads: integer().default(0),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_adsets_campaign_id").using("btree", table.campaignId.asc().nullsLast().op("text_ops")),
+	index("idx_adsets_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.campaignId],
+			foreignColumns: [campaigns.id],
+			name: "adsets_campaign_id_campaigns_id_fk"
+		}).onDelete("cascade"),
+]);
+
+
+export const ads = pgTable("ads", {
+  id: varchar({ length: 255 }).primaryKey().notNull(),
+  campaignId: varchar("campaign_id", { length: 255 }).notNull(),
+  adsetId: varchar("adset_id", { length: 255 }).notNull(),
+  name: text(),
+  platform: text().default('meta'),
+  status: text(),
+  effectiveStatus: text("effective_status"),
+  isArchived: boolean("is_archived").default(false),
+  creativeId: varchar("creative_id", { length: 255 }),
+  spend: numeric({ precision: 12, scale:  2 }).default('0'),
+  clicksLast30D: integer("clicks_last_30d").default(0),
+  impressionsLast30D: integer("impressions_last_30d").default(0),
+  ctrLast30D: numeric("ctr_last_30d", { precision: 10, scale:  4 }),
+  cpcLast30D: numeric("cpc_last_30d", { precision: 12, scale:  4 }),
+  cpa: numeric({ precision: 12, scale:  4 }),
+  leads: integer().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+  index("idx_ads_adset_id").using("btree", table.adsetId.asc().nullsLast().op("text_ops")),
+  index("idx_ads_campaign_id").using("btree", table.campaignId.asc().nullsLast().op("text_ops")),
+  index("idx_ads_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+  foreignKey({
+      columns: [table.campaignId],
+      foreignColumns: [campaigns.id],
+      name: "ads_campaign_id_campaigns_id_fk"
+    }).onDelete("cascade"),
+  foreignKey({
+      columns: [table.adsetId],
+      foreignColumns: [adsets.id],
+      name: "ads_adset_id_adsets_id_fk"
+    }).onDelete("cascade"),
+]);
+
+export const leadStageCounts = pgTable("lead_stage_counts", {
+	id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
+	pipelineId: integer("pipeline_id").notNull(),
+	stageId: integer("stage_id").notNull(),
+	stageName: varchar("stage_name", { length: 255 }).notNull(),
+	leadsCount: integer("leads_count").notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	pipelineName: varchar("pipeline_name", { length: 255 }).notNull(),
+}, (table) => [
+	unique("lead_stage_unique").on(table.pipelineId, table.stageId),
+]);
 
 export const campaignLeadEvents = pgTable("campaign_lead_events", {
 	eventId: text("event_id").primaryKey().notNull(),
@@ -60,139 +183,16 @@ export const campaignLeadEvents = pgTable("campaign_lead_events", {
 		}).onDelete("cascade"),
 ]);
 
-export const campaigns = pgTable("campaigns", {
-	name: text().notNull(),
-	platform: text().notNull(),
-	leadsMonthly: integer("leads_monthly").default(0).notNull(),
-	spend: numeric({ precision: 12, scale:  2 }).default('0.00').notNull(),
-	roi: numeric({ precision: 8, scale:  2 }).default('0.00'),
-	status: text().default('active').notNull(),
-	startDate: timestamp("start_date", { mode: 'string' }),
-	endDate: timestamp("end_date", { mode: 'string' }),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-	id: varchar().primaryKey().notNull(),
-	sourceApp: text("source_app"),
-	sourceType: text("source_type"),
-	sourceUrl: text("source_url"),
-	title: text(),
-	body: text(),
-	ctwaLastClid: text("ctwa_last_clid"),
-	lastLeadAt: timestamp("last_lead_at", { withTimezone: true, mode: 'string' }),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	effectiveStatus: text("effective_status"),
-	isArchived: boolean("is_archived").default(false),
-	clicksLast30D: integer("clicks_last_30d"),
-	cpa: numeric({ precision: 12, scale:  4 }),
-	impressionsLast30D: integer("impressions_last_30d"),
-	ctrLast30D: numeric("ctr_last_30d", { precision: 12, scale:  6 }),
-	cpcLast30D: numeric("cpc_last_30d", { precision: 12, scale:  6 }),
-	objective: text(),
-	buyingType: text("buying_type"),
-	leadsWeekly: integer("leads_weekly"),
-	leadsDaily: integer("leads_daily"),
-	monthlyOportunity: integer("monthly_oportunity"),
-	weeklyOportunity: integer("weekly_oportunity"),
-	dailyOportunity: integer("daily_oportunity"),
-	leadsVisitaAgendadaDaily: integer("leads_visita_agendada_daily"),
-	leadsVisitaRealizadaDaily: integer("leads_visita_realizada_daily"),
-	leadsReservaDaily: integer("leads_reserva_daily"),
-	leadsVendaDaily: integer("leads_venda_daily"),
-	leadsVisitaAgendadaWeekly: integer("leads_visita_agendada_weekly"),
-	leadsVisitaRealizadaWeekly: integer("leads_visita_realizada_weekly"),
-	leadsReservaWeekly: integer("leads_reserva_weekly"),
-	leadsVendaWeekly: integer("leads_venda_weekly"),
-	leadsVisitaAgendadaMonthly: integer("leads_visita_agendada_monthly"),
-	leadsVisitaRealizadaMonthly: integer("leads_visita_realizada_monthly"),
-	leadsReservaMonthly: integer("leads_reserva_monthly"),
-	leadsVendaMonthly: integer("leads_venda_monthly"),
+export const leadClosingTime = pgTable("lead_closing_time", {
+	id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
+	leadId: integer("lead_id").notNull(),
+	closingDays: integer("closing_days").notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	pipelineId: integer("pipeline_id").notNull(),
 });
 
-export const adsets = pgTable("adsets", {
-	id: varchar().primaryKey().notNull(),
-	campaignId: varchar("campaign_id").notNull(),
-	name: text(),
-	platform: text().default('meta'),
-	status: text(),
-	effectiveStatus: text("effective_status"),
-	isArchived: boolean("is_archived").default(false),
-	startDate: timestamp("start_date", { mode: 'string' }),
-	endDate: timestamp("end_date", { mode: 'string' }),
-	spend: numeric({ precision: 12, scale:  2 }).default('0'),
-	clicksLast30D: integer("clicks_last_30d").default(0),
-	impressionsLast30D: integer("impressions_last_30d").default(0),
-	ctrLast30D: numeric("ctr_last_30d", { precision: 10, scale:  4 }),
-	cpcLast30D: numeric("cpc_last_30d", { precision: 12, scale:  4 }),
-	cpa: numeric({ precision: 12, scale:  4 }),
-	leads: integer().default(0),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	index("idx_adsets_campaign_id").using("btree", table.campaignId.asc().nullsLast().op("text_ops")),
-	foreignKey({
-			columns: [table.campaignId],
-			foreignColumns: [campaigns.id],
-			name: "adsets_campaign_id_fkey"
-		}).onDelete("cascade"),
-]);
-
-export const ads = pgTable("ads", {
-	id: varchar().primaryKey().notNull(),
-	campaignId: varchar("campaign_id").notNull(),
-	adsetId: varchar("adset_id").notNull(),
-	name: text(),
-	platform: text().default('meta'),
-	status: text(),
-	effectiveStatus: text("effective_status"),
-	isArchived: boolean("is_archived").default(false),
-	creativeId: varchar("creative_id"),
-	spend: numeric({ precision: 12, scale:  2 }).default('0'),
-	clicksLast30D: integer("clicks_last_30d").default(0),
-	impressionsLast30D: integer("impressions_last_30d").default(0),
-	ctrLast30D: numeric("ctr_last_30d", { precision: 10, scale:  4 }),
-	cpcLast30D: numeric("cpc_last_30d", { precision: 12, scale:  4 }),
-	cpa: numeric({ precision: 12, scale:  4 }),
-	leads: integer().default(0),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	index("idx_ads_adset_id").using("btree", table.adsetId.asc().nullsLast().op("text_ops")),
-	index("idx_ads_campaign_id").using("btree", table.campaignId.asc().nullsLast().op("text_ops")),
-	foreignKey({
-			columns: [table.campaignId],
-			foreignColumns: [campaigns.id],
-			name: "ads_campaign_id_fkey"
-		}).onDelete("cascade"),
-	foreignKey({
-			columns: [table.adsetId],
-			foreignColumns: [adsets.id],
-			name: "ads_adset_id_fkey"
-		}).onDelete("cascade"),
-]);
-
-export const leadStageCounts = pgTable("lead_stage_counts", {
-	id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	pipelineId: bigint("pipeline_id", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	stageId: bigint("stage_id", { mode: "number" }).notNull(),
-	stageName: text("stage_name"),
-	leadsCount: integer("leads_count").default(0).notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	pipelineName: text("pipeline_name"),
-}, (table) => [
-	uniqueIndex("idx_lead_stage_counts_pipeline_stage").using("btree", table.pipelineId.asc().nullsLast().op("int8_ops"), table.stageId.asc().nullsLast().op("int8_ops")),
-	unique("uq_stage_count").on(table.pipelineId, table.stageId),
-	unique("lead_stage_counts_pipeline_stage_unique").on(table.pipelineId, table.stageId),
-]);
-
-export const leadClosingTime = pgTable("lead_closing_time", {
-	id: serial().primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	leadId: bigint("lead_id", { mode: "number" }).notNull(),
-	closingDays: integer("closing_days"),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
-	pipelineId: numeric("pipeline_id"),
-}, (table) => [
-	unique("lead_closing_time_lead_id_unique").on(table.leadId),
-]);
+export const kommoStageMetricsLogs = pgTable("kommo_stage_metrics_logs", {
+	id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	payload: jsonb().notNull(),
+});

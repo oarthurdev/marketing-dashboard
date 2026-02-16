@@ -672,7 +672,7 @@ export default function Campaigns() {
                             <div className="rounded-lg bg-muted/30 p-2">
                               <div className="text-muted-foreground">ROI</div>
                               <div className="font-semibold">
-                                {(c.roi || 0)}
+                                {(c.roi || 0)}%
                               </div>
                             </div>
                           </div>

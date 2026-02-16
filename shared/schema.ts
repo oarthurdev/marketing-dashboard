@@ -1,233 +1,199 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, numeric, index, timestamp, jsonb, boolean} from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod";
+import { pgTable, varchar, text, numeric, timestamp, boolean, jsonb, integer, time, index, foreignKey, unique } from "drizzle-orm/pg-core"
+import { sql } from "drizzle-orm"
 
-export const metrics = pgTable("metrics", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  date: timestamp("date").notNull().defaultNow(),
-  totalLeads: integer("total_leads"),
-  conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }).notNull().default("0.00"),
-  dailyRevenue: decimal("daily_revenue", { precision: 12, scale: 2 }).notNull().default("0.00"),
-  avgCPA: decimal("avg_cpa", { precision: 10, scale: 2 }).notNull().default("0.00"),
-  leadSources: jsonb("lead_sources").$type<Record<string, number>>().notNull().default({}),
-  createdAt: timestamp("created_at").defaultNow(),
-});
 
-export const kommoStageMetricsLogs = pgTable("kommo_stage_metrics_logs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-
-  payload: jsonb("payload").notNull(),
-});
-
-export const leadClosingTime = pgTable("lead_closing_time", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  leadId: integer("lead_id").notNull(),
-  pipelineId: integer("pipeline_id").notNull(),
-  closingDays: integer("closing_days").notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
-
-export const leadStageCounts = pgTable("lead_stage_counts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  pipelineId: integer("pipeline_id").notNull(),
-  pipelineName: varchar("pipeline_name", { length: 255 }).notNull(),
-  stageId: integer("stage_id").notNull(),
-  stageName: varchar("stage_name", { length: 255 }).notNull(),
-  leadsCount: integer("leads_count").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
-
-export const campaigns = pgTable("campaigns", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  platform: text("platform").notNull(), // 'google', 'facebook', 'linkedin', etc.
-  leads_monthly: integer("leads_monthly"),
-  leads_weekly: integer("leads_weekly"),
-  leads_daily: integer("leads_daily"),
-  leads_visita_agendada_daily: integer("leads_visita_agendada_daily"),
-  leads_visita_agendada_weekly: integer("leads_visita_agendada_weekly"),
-  leads_visita_agendada_monthly: integer("leads_visita_agendada_monthly"),
-  leads_visita_realizada_daily: integer("leads_visita_realizada_daily"),
-  leads_visita_realizada_weekly: integer("leads_visita_realizada_weekly"),
-  leads_visita_realizada_monthly: integer("leads_visita_realizada_monthly"),
-  leads_reserva_daily: integer("leads_reserva_daily"),
-  leads_reserva_weekly: integer("leads_reserva_weekly"),
-  leads_reserva_monthly: integer("leads_reserva_monthly"),
-  leads_venda_daily: integer("leads_venda_daily"),
-  leads_venda_weekly: integer("leads_venda_weekly"),
-  leads_venda_monthly: integer("leads_venda_monthly"),
-  monthly_oportunity: integer("monthly_oportunity"),
-  weekly_oportunity: integer("weekly_oportunity"),
-  daily_oportunity: integer("daily_oportunity"),
-  spend: decimal("spend", { precision: 12, scale: 2 }).notNull().default("0.00"),
-  roi: decimal("roi", { precision: 8, scale: 2 }).notNull().default("0.00"),
-  status: text("status").notNull().default("active"), // 'active', 'paused', 'ended'
-  startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const adsets = pgTable(
-  "adsets",
-  {
-    id: varchar("id", { length: 255 }).primaryKey(),
-
-    campaign_id: varchar("campaign_id", { length: 255 })
-      .notNull()
-      .references(() => campaigns.id, { onDelete: "cascade" }),
-
-    name: text("name"),
-    platform: text("platform").default("meta"),
-
-    status: text("status"),
-    effectiveStatus: text("effective_status"),
-    isArchived: boolean("is_archived").default(false),
-
-    startDate: timestamp("start_date", { withTimezone: false }),
-    endDate: timestamp("end_date", { withTimezone: false }),
-
-    // métricas
-    spend: numeric("spend", { precision: 12, scale: 2 }).default("0"),
-    clicksLast30d: integer("clicks_last_30d").default(0),
-    impressionsLast30d: integer("impressions_last_30d").default(0),
-    ctrLast30d: numeric("ctr_last_30d", { precision: 10, scale: 4 }),
-    cpcLast30d: numeric("cpc_last_30d", { precision: 12, scale: 4 }),
-    cpa: numeric("cpa", { precision: 12, scale: 4 }),
-
-    // leads (se você for preencher por job/trigger)
-    leads: integer("leads").default(0),
-
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-  },
-  (t) => ({
-    campaignIdIdx: index("idx_adsets_campaign_id").on(t.campaign_id),
-    statusIdx: index("idx_adsets_status").on(t.status),
-  })
-);
-
-/**
- * ADS
- * - Vinculado a campaigns.id e adsets.id
- * - Métricas agregadas (ex: últimos 30d)
- */
-export const ads = pgTable(
-  "ads",
-  {
-    id: varchar("id", { length: 255 }).primaryKey(),
-
-    campaign_id: varchar("campaign_id", { length: 255 })
-      .notNull()
-      .references(() => campaigns.id, { onDelete: "cascade" }),
-
-    adsetId: varchar("adset_id", { length: 255 })
-      .notNull()
-      .references(() => adsets.id, { onDelete: "cascade" }),
-
-    name: text("name"),
-    platform: text("platform").default("meta"),
-
-    status: text("status"),
-    effectiveStatus: text("effective_status"),
-    isArchived: boolean("is_archived").default(false),
-
-    creativeId: varchar("creative_id", { length: 255 }),
-
-    // métricas
-    spend: numeric("spend", { precision: 12, scale: 2 }).default("0"),
-    clicksLast30d: integer("clicks_last_30d").default(0),
-    impressionsLast30d: integer("impressions_last_30d").default(0),
-    ctrLast30d: numeric("ctr_last_30d", { precision: 10, scale: 4 }),
-    cpcLast30d: numeric("cpc_last_30d", { precision: 12, scale: 4 }),
-    cpa: numeric("cpa", { precision: 12, scale: 4 }),
-
-    // leads
-    leads: integer("leads").default(0),
-
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-  },
-  (t) => ({
-    campaignIdIdx: index("idx_ads_campaign_id").on(t.campaign_id),
-    adsetIdIdx: index("idx_ads_adset_id").on(t.adsetId),
-    statusIdx: index("idx_ads_status").on(t.status),
-  })
-);
 
 export const activities = pgTable("activities", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  type: text("type").notNull(), // 'lead', 'sale', 'campaign_launch', etc.
-  source: text("source").notNull(),
-  details: text("details").notNull(),
-  amount: decimal("amount", { precision: 12, scale: 2 }),
-  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
+  type: text().notNull(),
+  source: text().notNull(),
+  details: text().notNull(),
+  amount: numeric({ precision: 12, scale:  2 }),
+  timestamp: timestamp({ mode: 'string' }).defaultNow().notNull(),
 });
 
 export const apiConnections = pgTable("api_connections", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  platform: text("platform").notNull(),
-  isConnected: boolean("is_connected").notNull().default(false),
-  lastSync: timestamp("last_sync"),
-  config: jsonb("config").$type<Record<string, any>>().notNull().default({}),
+  id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
+  platform: text().notNull(),
+  isConnected: boolean("is_connected").default(false).notNull(),
+  lastSync: timestamp("last_sync", { mode: 'string' }),
+  config: jsonb().default({}).notNull(),
+});
+
+export const metrics = pgTable("metrics", {
+  id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
+  date: timestamp({ mode: 'string' }).defaultNow().notNull(),
+  totalLeads: integer("total_leads"),
+  conversionRate: numeric("conversion_rate", { precision: 5, scale:  2 }).default('0.00').notNull(),
+  dailyRevenue: numeric("daily_revenue", { precision: 12, scale:  2 }).default('0.00').notNull(),
+  avgCpa: numeric("avg_cpa", { precision: 10, scale:  2 }).default('0.00').notNull(),
+  leadSources: jsonb("lead_sources").default({}).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 });
 
 export const reports = pgTable("reports", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: text("title").notNull(),
-  type: text("type").notNull(), // 'daily', 'weekly', 'monthly'
-  format: text("format").notNull(), // 'pdf', 'html', 'json'
-  data: jsonb("data").$type<Record<string, any>>().notNull().default({}),
-  generatedAt: timestamp("generated_at").defaultNow(),
+  id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
+  title: text().notNull(),
+  type: text().notNull(),
+  format: text().notNull(),
+  data: jsonb().default({}).notNull(),
+  generatedAt: timestamp("generated_at", { mode: 'string' }).defaultNow(),
 });
 
-export const insertMetricsSchema = createInsertSchema(metrics).omit({
-  id: true,
-  createdAt: true,
+export const campaigns = pgTable("campaigns", {
+  name: text().notNull(),
+  platform: text().notNull(),
+  leadsMonthly: integer("leads_monthly"),
+  spend: numeric({ precision: 12, scale:  2 }).default('0.00').notNull(),
+  roi: numeric({ precision: 8, scale:  2 }).default('0.00').notNull(),
+  status: text().default('active').notNull(),
+  startDate: timestamp("start_date", { mode: 'string' }),
+  endDate: timestamp("end_date", { mode: 'string' }),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
+  leadsWeekly: integer("leads_weekly"),
+  leadsDaily: integer("leads_daily"),
+  monthlyOportunity: integer("monthly_oportunity"),
+  weeklyOportunity: integer("weekly_oportunity"),
+  dailyOportunity: integer("daily_oportunity"),
+  leadsVisitaAgendadaDaily: integer("leads_visita_agendada_daily"),
+  leadsVisitaRealizadaDaily: integer("leads_visita_realizada_daily"),
+  leadsReservaDaily: integer("leads_reserva_daily"),
+  leadsVendaDaily: integer("leads_venda_daily"),
+  leadsVisitaAgendadaWeekly: integer("leads_visita_agendada_weekly"),
+  leadsVisitaRealizadaWeekly: integer("leads_visita_realizada_weekly"),
+  leadsReservaWeekly: integer("leads_reserva_weekly"),
+  leadsVendaWeekly: integer("leads_venda_weekly"),
+  leadsVisitaAgendadaMonthly: integer("leads_visita_agendada_monthly"),
+  leadsVisitaRealizadaMonthly: integer("leads_visita_realizada_monthly"),
+  leadsReservaMonthly: integer("leads_reserva_monthly"),
+  leadsVendaMonthly: integer("leads_venda_monthly"),
+  updatedAt: time("updated_at"),
+  sourceApp: text("source_app"),
+  sourceType: text("source_type"),
+  sourceUrl: text("source_url"),
+  title: text(),
+  body: text(),
+  effectiveStatus: text("effective_status"),
+  isArchived: boolean("is_archived"),
+  objective: text(),
+  buyingType: text("buying_type"),
+  clicksLast30D: numeric("clicks_last_30d"),
+  cpa: numeric(),
+  revenue: numeric({ precision: 14, scale:  2 }),
 });
 
-export const insertCampaignSchema = createInsertSchema(campaigns).omit({
-  id: true,
-  createdAt: true,
+export const adsets = pgTable("adsets", {
+  id: varchar({ length: 255 }).primaryKey().notNull(),
+  campaignId: varchar("campaign_id", { length: 255 }).notNull(),
+  name: text(),
+  platform: text().default('meta'),
+  status: text(),
+  effectiveStatus: text("effective_status"),
+  isArchived: boolean("is_archived").default(false),
+  startDate: timestamp("start_date", { mode: 'string' }),
+  endDate: timestamp("end_date", { mode: 'string' }),
+  spend: numeric({ precision: 12, scale:  2 }).default('0'),
+  clicksLast30D: integer("clicks_last_30d").default(0),
+  impressionsLast30D: integer("impressions_last_30d").default(0),
+  ctrLast30D: numeric("ctr_last_30d", { precision: 10, scale:  4 }),
+  cpcLast30D: numeric("cpc_last_30d", { precision: 12, scale:  4 }),
+  cpa: numeric({ precision: 12, scale:  4 }),
+  leads: integer().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+  index("idx_adsets_campaign_id").using("btree", table.campaignId.asc().nullsLast().op("text_ops")),
+  index("idx_adsets_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+  foreignKey({
+      columns: [table.campaignId],
+      foreignColumns: [campaigns.id],
+      name: "adsets_campaign_id_campaigns_id_fk"
+    }).onDelete("cascade"),
+]);
+
+export const ads = pgTable("ads", {
+  id: varchar({ length: 255 }).primaryKey().notNull(),
+  campaignId: varchar("campaign_id", { length: 255 }).notNull(),
+  adsetId: varchar("adset_id", { length: 255 }).notNull(),
+  name: text(),
+  platform: text().default('meta'),
+  status: text(),
+  effectiveStatus: text("effective_status"),
+  isArchived: boolean("is_archived").default(false),
+  creativeId: varchar("creative_id", { length: 255 }),
+  spend: numeric({ precision: 12, scale:  2 }).default('0'),
+  clicksLast30D: integer("clicks_last_30d").default(0),
+  impressionsLast30D: integer("impressions_last_30d").default(0),
+  ctrLast30D: numeric("ctr_last_30d", { precision: 10, scale:  4 }),
+  cpcLast30D: numeric("cpc_last_30d", { precision: 12, scale:  4 }),
+  cpa: numeric({ precision: 12, scale:  4 }),
+  leads: integer().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+  index("idx_ads_adset_id").using("btree", table.adsetId.asc().nullsLast().op("text_ops")),
+  index("idx_ads_campaign_id").using("btree", table.campaignId.asc().nullsLast().op("text_ops")),
+  index("idx_ads_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+  foreignKey({
+      columns: [table.campaignId],
+      foreignColumns: [campaigns.id],
+      name: "ads_campaign_id_campaigns_id_fk"
+    }).onDelete("cascade"),
+  foreignKey({
+      columns: [table.adsetId],
+      foreignColumns: [adsets.id],
+      name: "ads_adset_id_adsets_id_fk"
+    }).onDelete("cascade"),
+]);
+
+export const leadStageCounts = pgTable("lead_stage_counts", {
+  id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
+  pipelineId: integer("pipeline_id").notNull(),
+  stageId: integer("stage_id").notNull(),
+  stageName: varchar("stage_name", { length: 255 }).notNull(),
+  leadsCount: integer("leads_count").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+  pipelineName: varchar("pipeline_name", { length: 255 }).notNull(),
+}, (table) => [
+  unique("lead_stage_unique").on(table.pipelineId, table.stageId),
+]);
+
+export const campaignLeadEvents = pgTable("campaign_lead_events", {
+  eventId: text("event_id").primaryKey().notNull(),
+  campaignId: text("campaign_id").notNull(),
+  phone: text(),
+  messageId: text("message_id"),
+  sourceApp: text("source_app"),
+  sourceType: text("source_type"),
+  sourceUrl: text("source_url"),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+  adId: varchar("ad_id"),
+  adsetId: varchar("adset_id"),
+}, (table) => [
+  index("idx_campaign_lead_events_campaign").using("btree", table.campaignId.asc().nullsLast().op("text_ops")),
+  foreignKey({
+      columns: [table.campaignId],
+      foreignColumns: [campaigns.id],
+      name: "campaign_lead_events_campaign_id_fkey"
+    }).onDelete("cascade"),
+]);
+
+export const leadClosingTime = pgTable("lead_closing_time", {
+  id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
+  leadId: integer("lead_id").notNull(),
+  closingDays: integer("closing_days").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+  pipelineId: integer("pipeline_id").notNull(),
 });
 
-export const insertActivitySchema = createInsertSchema(activities).omit({
-  id: true,
-  timestamp: true,
+export const kommoStageMetricsLogs = pgTable("kommo_stage_metrics_logs", {
+  id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+  payload: jsonb().notNull(),
 });
 
-export const insertApiConnectionSchema = createInsertSchema(apiConnections).omit({
-  id: true,
-});
-
-export const insertReportSchema = createInsertSchema(reports).omit({
-  id: true,
-  generatedAt: true,
-});
-
-export type InsertMetrics = z.infer<typeof insertMetricsSchema>;
-export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
-export type InsertActivity = z.infer<typeof insertActivitySchema>;
-export type InsertApiConnection = z.infer<typeof insertApiConnectionSchema>;
-export type InsertReport = z.infer<typeof insertReportSchema>;
-
-export type Metrics = typeof metrics.$inferSelect;
-export type Campaign = typeof campaigns.$inferSelect;
-export type Activity = typeof activities.$inferSelect;
-export type ApiConnection = typeof apiConnections.$inferSelect;
-export type Report = typeof reports.$inferSelect;
-export type LeadClosingTime = typeof leadClosingTime.$inferSelect;
-export type NewLeadClosingTime = typeof leadClosingTime.$inferInsert;
-export type LeadStageCount = typeof leadStageCounts.$inferSelect;
-export type NewLeadStageCount = typeof leadStageCounts.$inferInsert;
+function gen_random_uuid(): import("drizzle-orm").SQL<unknown> {
+  return sql`gen_random_uuid()`;
+}

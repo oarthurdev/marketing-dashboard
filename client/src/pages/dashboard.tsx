@@ -133,7 +133,13 @@ export default function Dashboard() {
 
           {/* LEADS NA ETAPA — menor KPI */}
           <Card className="xl:col-span-1">
-            <CardContent className="flex items-center justify-center h-full">
+            <CardHeader>
+              <CardTitle>Erros da IA</CardTitle>
+              <CardDescription>
+                Quantidade de erros no mês
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center">
               <ErrosDaIAChart stageId="100621824" />
             </CardContent>
           </Card>
