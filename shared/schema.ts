@@ -1,12 +1,12 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, numeric, index, timestamp, jsonb, boolean , serial} from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, numeric, index, timestamp, jsonb, boolean} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const metrics = pgTable("metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   date: timestamp("date").notNull().defaultNow(),
-  totalLeads: integer("total_leads").notNull().default(0),
+  totalLeads: integer("total_leads"),
   conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }).notNull().default("0.00"),
   dailyRevenue: decimal("daily_revenue", { precision: 12, scale: 2 }).notNull().default("0.00"),
   avgCPA: decimal("avg_cpa", { precision: 10, scale: 2 }).notNull().default("0.00"),
@@ -14,8 +14,18 @@ export const metrics = pgTable("metrics", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const kommoStageMetricsLogs = pgTable("kommo_stage_metrics_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+
+  payload: jsonb("payload").notNull(),
+});
+
 export const leadClosingTime = pgTable("lead_closing_time", {
-  id: serial("id").primaryKey(),
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   leadId: integer("lead_id").notNull(),
   pipelineId: integer("pipeline_id").notNull(),
   closingDays: integer("closing_days").notNull(),
@@ -25,7 +35,7 @@ export const leadClosingTime = pgTable("lead_closing_time", {
 });
 
 export const leadStageCounts = pgTable("lead_stage_counts", {
-  id: serial("id").primaryKey(),
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   pipelineId: integer("pipeline_id").notNull(),
   pipelineName: varchar("pipeline_name", { length: 255 }).notNull(),
   stageId: integer("stage_id").notNull(),
@@ -43,24 +53,24 @@ export const campaigns = pgTable("campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   platform: text("platform").notNull(), // 'google', 'facebook', 'linkedin', etc.
-  leads_monthly: integer("leads_monthly").notNull().default(0),
-  leads_weekly: integer("leads_weekly").notNull().default(0),
-  leads_daily: integer("leads_daily").notNull().default(0),
-  leads_visita_agendada_daily: integer("leads_visita_agendada_daily").notNull().default(0),
-  leads_visita_agendada_weekly: integer("leads_visita_agendada_weekly").notNull().default(0),
-  leads_visita_agendada_monthly: integer("leads_visita_agendada_monthly").notNull().default(0),
-  leads_visita_realizada_daily: integer("leads_visita_realizada_daily").notNull().default(0),
-  leads_visita_realizada_weekly: integer("leads_visita_realizada_weekly").notNull().default(0),
-  leads_visita_realizada_monthly: integer("leads_visita_realizada_monthly").notNull().default(0),
-  leads_reserva_daily: integer("leads_reserva_daily").notNull().default(0),
-  leads_reserva_weekly: integer("leads_reserva_weekly").notNull().default(0),
-  leads_reserva_monthly: integer("leads_reserva_monthly").notNull().default(0),
-  leads_venda_daily: integer("leads_venda_daily").notNull().default(0),
-  leads_venda_weekly: integer("leads_venda_weekly").notNull().default(0),
-  leads_venda_monthly: integer("leads_venda_monthly").notNull().default(0),
-  monthly_oportunity: integer("monthly_oportunity").notNull().default(0),
-  weekly_oportunity: integer("weekly_oportunity").notNull().default(0),
-  daily_oportunity: integer("daily_oportunity").notNull().default(0),
+  leads_monthly: integer("leads_monthly"),
+  leads_weekly: integer("leads_weekly"),
+  leads_daily: integer("leads_daily"),
+  leads_visita_agendada_daily: integer("leads_visita_agendada_daily"),
+  leads_visita_agendada_weekly: integer("leads_visita_agendada_weekly"),
+  leads_visita_agendada_monthly: integer("leads_visita_agendada_monthly"),
+  leads_visita_realizada_daily: integer("leads_visita_realizada_daily"),
+  leads_visita_realizada_weekly: integer("leads_visita_realizada_weekly"),
+  leads_visita_realizada_monthly: integer("leads_visita_realizada_monthly"),
+  leads_reserva_daily: integer("leads_reserva_daily"),
+  leads_reserva_weekly: integer("leads_reserva_weekly"),
+  leads_reserva_monthly: integer("leads_reserva_monthly"),
+  leads_venda_daily: integer("leads_venda_daily"),
+  leads_venda_weekly: integer("leads_venda_weekly"),
+  leads_venda_monthly: integer("leads_venda_monthly"),
+  monthly_oportunity: integer("monthly_oportunity"),
+  weekly_oportunity: integer("weekly_oportunity"),
+  daily_oportunity: integer("daily_oportunity"),
   spend: decimal("spend", { precision: 12, scale: 2 }).notNull().default("0.00"),
   roi: decimal("roi", { precision: 8, scale: 2 }).notNull().default("0.00"),
   status: text("status").notNull().default("active"), // 'active', 'paused', 'ended'

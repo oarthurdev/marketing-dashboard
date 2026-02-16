@@ -6,9 +6,10 @@ import {
   type Campaign, type InsertCampaign,
   type Activity, type InsertActivity,
   type ApiConnection, type InsertApiConnection,
-  type Report, type InsertReport
+  type Report, type InsertReport,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { makeRequest } from './services/kommo';
 
 type CampaignRow = any; // ou tipa melhor se quiser
 type AdsetRow = any;
@@ -26,6 +27,12 @@ type PipelineSummary = {
   pipelineId: number;
   pipelineName: string;
 };
+
+const RATE_LIMIT_MS = 1000 / 7;
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 export interface IStorage {
   // Metrics
@@ -409,6 +416,47 @@ class HybridStorage implements IStorage {
     }
 
     return Array.from(this.memoryCampaigns.values());
+  }
+
+  async getLeadsByStageCurrentMonth(stageId: string): Promise<Lead[]> {
+    const all: Lead[] = [];
+    let page = 1;
+
+    const now = new Date();
+
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000;
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).getTime() / 1000;
+
+    while (true) {
+      const start = Date.now();
+
+      const query = `
+        filter[statuses][0][pipeline_id]=11795444
+        &filter[statuses][0][status_id]=${stageId}
+        &filter[created_at][from]=${Math.floor(firstDay)}
+        &filter[created_at][to]=${Math.floor(lastDay)}
+      `.replace(/\s/g, "");
+
+      const res = await makeRequest(`/leads?${query}&page=${page}&limit=250`);
+      const leads = res?._embedded?.leads ?? [];
+
+      console.log(`📥 Página ${page}: ${leads.length}`);
+
+      if (!leads.length) break;
+
+      all.push(...leads);
+
+      if (leads.length < 250) break;
+      page++;
+
+      const elapsed = Date.now() - start;
+      if (elapsed < RATE_LIMIT_MS) {
+        await sleep(RATE_LIMIT_MS - elapsed);
+      }
+    }
+
+    console.log("✅ Total leads mês atual:", all.length);
+    return all;
   }
 
   async getCampaignsHierarchy() {

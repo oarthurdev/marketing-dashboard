@@ -1,24 +1,21 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { DataProcessor } from "./services/dataProcessor";
 import { ReportGenerator } from "./services/reportGenerator";
 import schedule from "node-schedule"; // Changed from node-cron to node-schedule for potential consistency, assuming it's a typo in the original or a preferred choice. If node-cron is strictly required, revert this.
 import { getLeadsByRange, getOpportunitiesByRange, getVisitasAgendadasByRange, getVisitasRealizadasByRange, getReservaByRange, getVendaByRange } from "./helpers/getStateByRange.js";
+import { makeRequest } from "./services/kommo";
+import { db } from "./db"
+import { kommoStageMetricsLogs } from "@shared/schema.js";
+
+const RATE_LIMIT_MS = 1000 / 7;
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  const dataProcessor = new DataProcessor();
   const reportGenerator = new ReportGenerator();
-
-  // Schedule daily data processing at 6 AM
-  schedule.scheduleJob("0 6 * * *", async () => {
-    console.log("Running scheduled daily data processing...");
-    try {
-      await dataProcessor.processDaily();
-    } catch (error) {
-      console.error("Scheduled data processing failed:", error);
-    }
-  });
 
   // Schedule daily report generation at 8 AM
   schedule.scheduleJob("0 8 * * *", async () => {
@@ -27,23 +24,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await reportGenerator.generateDailyReport();
     } catch (error) {
       console.error("Daily report generation failed:", error);
-    }
-  });
-
-  // API Routes
-  app.get("/api/dashboard/metrics", async (req, res) => {
-    try {
-      const metrics = await storage.getLatestMetrics();
-      if (!metrics) {
-        // If no metrics exist, trigger initial data processing
-        await dataProcessor.processDaily();
-        const newMetrics = await storage.getLatestMetrics();
-        return res.json(newMetrics);
-      }
-      res.json(metrics);
-    } catch (error) {
-      console.error("Error fetching metrics:", error);
-      res.status(500).json({ message: "Failed to fetch metrics" });
     }
   });
 
@@ -177,6 +157,203 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/kommo/leads-by-stage-month", async (req: Request, res: Response) => {
+    try {
+      const { stageId } = req.query;
+
+      if (!stageId)
+        return res.status(400).json({ error: "stageId obrigatório" });
+
+      const leads = await storage.getLeadsByStageCurrentMonth(String(stageId));
+
+      console.log(`Leads estágio ${stageId} mês atual:`, leads.length);
+      const result = {
+        stageId,
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear(),
+        total: leads.length
+      };
+
+      await db.insert(kommoStageMetricsLogs).values({
+        createdAt: new Date(),
+        payload: JSON.stringify(result)
+      }).catch(() => {});
+
+      res.json(result);
+
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Erro ao buscar leads do estágio" });
+    }
+  });
+
+  interface Lead {
+    id: number;
+    created_at: number;
+    status_id: number;
+  }
+
+  async function getLeadsByStages(stageIds: string[]): Promise<Lead[]> {
+    const all: Lead[] = [];
+    let page = 1;
+
+    while (true) {
+      const start = Date.now();
+
+      const query = stageIds
+        .map((id, i) => `filter[statuses][${i}][pipeline_id]=11795444&filter[statuses][${i}][status_id]=${id}`)
+        .join("&");
+
+      console.log("Query:", query);
+      
+      const res = await makeRequest(`/leads?${query}&page=${page}&limit=250`);
+      const leads = res?._embedded?.leads ?? [];
+
+      console.log(`📥 Página ${page}: ${leads.length}`);
+
+      if (!leads.length) break;
+
+      all.push(...leads);
+
+      if (leads.length < 250) break;
+      page++;
+
+      // garante limite de 7 req/s
+      const elapsed = Date.now() - start;
+      if (elapsed < RATE_LIMIT_MS) {
+        await sleep(RATE_LIMIT_MS - elapsed);
+      }
+    }
+
+    console.log("✅ Total leads:", all.length);
+    return all;
+  }
+
+  /* =======================================================
+    BUSCA TEMPO PRIMEIRA RESPOSTA (BATCH)
+  ======================================================= */
+
+  async function getFirstResponseTimes(
+    leads: Lead[]
+  ): Promise<Record<number, number | null>> {
+
+    if (!leads.length) return {};
+
+    const result: Record<number, number | null> = {};
+
+    await Promise.all(
+      leads.map(async (lead) => {
+        try {
+          const res = await makeRequest(
+            `/events?filter[entity]=lead&filter[entity_id]=${lead.id}`
+          );
+
+          const events = res?._embedded?.events ?? [];
+
+          
+          const firstMsg = events.find(
+            (e: any) => e.entity_id == 36153911
+          );
+
+          console.log(firstMsg)
+
+          result[lead.id] = firstMsg
+            ? firstMsg.created_at - lead.created_at
+            : null;
+
+        } catch (err) {
+          console.error("Erro eventos lead:", lead.id, err);
+          result[lead.id] = null;
+        }
+      })
+    );
+
+    return result;
+  }
+
+  /* =======================================================
+    CALCULO FINAL
+  ======================================================= */
+
+  async function calculateStages(stageIds: string[]) {
+    const leads = await getLeadsByStages(stageIds);
+
+    if (!leads.length) {
+      return stageIds.map(id => ({
+        stageId: id,
+        leads: 0,
+        averageFirstResponseSeconds: 0,
+      }));
+    }
+
+    const grouped: Record<string, Lead[]> = {};
+    stageIds.forEach(id => grouped[id] = []);
+
+    for (const lead of leads) {
+      if (grouped[lead.status_id]) {
+        grouped[lead.status_id].push(lead);
+      }
+    }
+
+    const times = await getFirstResponseTimes(leads);
+
+    const results = [];
+
+    for (const stageId of stageIds) {
+      const list = grouped[stageId];
+
+      let total = 0;
+      let count = 0;
+
+      for (const lead of list) {
+        const t = times[lead.id];
+        if (t != null) {
+          total += t;
+          count++;
+        }
+      }
+
+      results.push({
+        stageId,
+        leads: list.length,
+        averageFirstResponseSeconds: count ? total / count : 0,
+      });
+    }
+
+    return results;
+  }
+
+  app.get("/kommo/stage-metrics", async (req: Request, res: Response) => {
+    try {
+      const { stageA, stageB } = req.query;
+
+      if (!stageA || !stageB)
+        return res.status(400).json({ error: "stageA e stageB obrigatórios" });
+
+      const stageIds = [String(stageA), String(stageB)];
+
+      const stages = await calculateStages(stageIds);
+
+      const result = {
+        stages: stages.map((s, i) => ({
+          position: i + 1,
+          ...s
+        }))
+      };
+
+      await db.insert(kommoStageMetricsLogs).values({
+        createdAt: new Date(),
+        payload: JSON.stringify(result),
+      }).catch(() => {});
+
+      res.json(result);
+
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Erro ao calcular métricas" });
+    }
+  });
+
   app.get("/api/dashboard/campaigns/hierarchy", async (req, res) => {
     try {
       const data = await storage.getCampaignsHierarchy();
@@ -245,63 +422,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/connections/test", async (req, res) => {
-    try {
-      const { platform } = req.body;
-
-      // Here you would implement actual API testing logic
-      // For now, we'll simulate a test
-      const connection = await storage.getApiConnectionByPlatform(platform);
-
-      if (!connection || !connection.isConnected) {
-        return res.status(400).json({ error: "Connection not configured" });
-      }
-
-      let success = false;
-      switch (platform) {
-        case "google_analytics":
-          // Add Google Analytics connection test logic here
-          success = true;
-          break;
-        case "facebook_ads":
-          // Add Facebook Ads connection test logic here
-          success = true;
-          break;
-        case "shopify":
-          // Add Shopify connection test logic here
-          success = true;
-          break;
-        case "meta_ads":
-          // Add Meta Ads connection test logic here
-          success = true;
-          break;
-        case "tiktok_ads":
-          // Add TikTok Ads connection test logic here
-          success = true;
-          break;
-        case "kommo":
-          try {
-            const { KommoService } = await import("./services/kommo.js");
-            const kommoService = new KommoService();
-            success = await kommoService.testConnection();
-          } catch (error) {
-            console.error("Kommo connection test failed:", error);
-            success = false;
-          }
-          break;
-      }
-
-      if (success) {
-        res.json({ message: "Connection test successful", platform });
-      } else {
-        res.status(500).json({ error: "Connection test failed", platform });
-      }
-    } catch (error) {
-      console.error("Error testing connection:", error);
-      res.status(500).json({ error: "Connection test failed" });
-    }
-  });
-
   // Reports endpoints
   app.get("/api/reports", async (req, res) => {
     try {
@@ -311,131 +431,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching reports:", error);
       res.status(500).json({ message: "Failed to fetch reports" });
-    }
-  });
-
-  app.get("/api/dashboard", async (req, res) => {
-    try {
-      const days = Number(req.query.days ?? 7);
-
-      const campaigns = await storage.getCampaigns();
-
-      const totalCampaigns = campaigns.length;
-      const totalLeads = campaigns.reduce((acc, c) => acc + Number(c.leads ?? 0), 0);
-      const totalSpend = campaigns.reduce((acc, c) => acc + Number(c.spend ?? 0), 0);
-
-      res.json({
-        totalCampaigns,
-        totalLeads,
-        totalSpend,
-        funnel: {
-          leads: 132,
-          opportunities: 37,
-          visits: 2,
-          reservations: 3,
-          sales: 3,
-        },
-        days,
-        updatedAt: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error("Error fetching dashboard:", error);
-      res.status(500).json({ message: "Failed to fetch dashboard", err: error });
-    }
-  });
-
-  app.post("/api/dashboard/refresh", async (req, res) => {
-    try {
-      await dataProcessor.processDaily();
-      const metrics = await storage.getLatestMetrics();
-      res.json({ message: "Data refreshed successfully", metrics });
-    } catch (error) {
-      console.error("Error refreshing data:", error);
-      res.status(500).json({ message: "Failed to refresh data" });
-    }
-  });
-
-  app.post("/api/reports/generate", async (req, res) => {
-    try {
-      const { type = "daily" } = req.body;
-
-      let reportContent: string;
-      if (type === "weekly") {
-        reportContent = await reportGenerator.generateWeeklyReport();
-      } else {
-        reportContent = await reportGenerator.generateDailyReport();
-      }
-
-      const report = await storage.createReport({
-        title: `${type.charAt(0).toUpperCase() + type.slice(1)} Marketing Report`,
-        type: type,
-        format: "html",
-        data: { generated: true, type },
-      });
-
-      res.json({ content: reportContent, report });
-    } catch (error) {
-      console.error("Error generating report:", error);
-      res.status(500).json({ error: "Failed to generate report" });
-    }
-  });
-
-  // Kommo-specific endpoints
-  app.get("/api/kommo/leads", async (req, res) => {
-    try {
-      const { KommoService } = await import("./services/kommo.js");
-      const kommoService = new KommoService();
-
-      if (!kommoService.isConfigured()) {
-        return res.status(503).json({ error: "Kommo not configured" });
-      }
-
-      // Get period from query parameter, default to 365 days (1 year)
-      const periodDays = parseInt(req.query.period as string) || 365;
-      const leads = await kommoService.getDetailedLeads(periodDays);
-      res.json(leads);
-    } catch (error) {
-      console.error("Error fetching Kommo leads:", error);
-      res.status(500).json({ error: "Failed to fetch leads" });
-    }
-  });
-
-  // Kommo sales endpoint
-  app.get("/api/kommo/sales", async (req, res) => {
-    try {
-      const { KommoService } = await import("./services/kommo.js");
-      const kommoService = new KommoService();
-      if (!kommoService.isConfigured()) {
-        return res.status(400).json({ error: "Kommo not configured" });
-      }
-
-      const period = req.query.period
-        ? parseInt(req.query.period as string)
-        : 365;
-      const sales = await kommoService.getDetailedSales(period);
-      res.json(sales);
-    } catch (error) {
-      console.error("Error fetching Kommo sales:", error);
-      res.status(500).json({ error: "Failed to fetch sales data" });
-    }
-  });
-
-  app.get("/api/kommo/status", async (req, res) => {
-    try {
-      const { KommoService } = await import("./services/kommo.js");
-      const kommoService = new KommoService();
-
-      const isConfigured = kommoService.isConfigured();
-      let isConnected = false;
-
-      if (isConfigured) {
-        isConnected = await kommoService.testConnection();
-      }
-
-      res.json({ isConfigured, isConnected });
-    } catch (error) {
-      console.error("Error checking Kommo status:", error);
-      res.status(500).json({ error: "Failed to check Kommo status" });
     }
   });
 
