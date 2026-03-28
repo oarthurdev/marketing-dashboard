@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { ReportGenerator } from "./services/reportGenerator";
 import schedule from "node-schedule"; // Changed from node-cron to node-schedule for potential consistency, assuming it's a typo in the original or a preferred choice. If node-cron is strictly required, revert this.
-import { getLeadsByRange, getOpportunitiesByRange, getVisitasAgendadasByRange, getVisitasRealizadasByRange, getReservaByRange, getVendaByRange } from "./helpers/getStateByRange.js";
+import { getLeadsByRange, getOpportunitiesByRange, getVisitasAgendadasByRange, getVisitasRealizadasByRange, getReservaByRange, getVendaByRange, getVendaByMonth, getReservaByMonth, getVisitasRealizadasByMonth, getVisitasAgendadasByMonth, getOpportunitiesByMonth, getLeadsByMonth } from "./helpers/getStateByRange.js";
 import { makeRequest } from "./services/kommo";
 import { db } from "./db"
 import { kommoStageMetricsLogs } from "@shared/schema.js";
@@ -12,6 +12,28 @@ const RATE_LIMIT_MS = 1000 / 7;
 
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function normalizeMonthQuery(month?: string): string | null {
+  if (!month || month === "current") {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  if (month === "all") {
+    return "all";
+  }
+
+  if (!/^[0-9]{4}-[0-9]{2}$/.test(month)) {
+    return null;
+  }
+
+  const [year, monthNum] = month.split("-").map(Number);
+  if (isNaN(year) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+    return null;
+  }
+
+  return `${year}-${String(monthNum).padStart(2, "0")}`;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -29,73 +51,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/funnel", async (req, res) => {
     try {
-      const { range = "weekly" } = req.query as {
-        range?: "daily" | "weekly" | "monthly";
-      };
+      const { month } = req.query as { month?: string };
+      const monthKey = normalizeMonthQuery(month);
 
-      const campaigns = await storage.getCampaigns();
-
-      const now = new Date();
-      let rangeLabel = "";
-
-      if (range === "daily") {
-        rangeLabel = `Hoje (${now.toLocaleDateString("pt-BR")})`;
-      } else if (range === "monthly") {
-        rangeLabel = now.toLocaleDateString("pt-BR", {
-          month: "long",
-          year: "numeric",
-        });
-      } else {
-        const now = new Date();
-
-        const start = new Date(now);
-        const dayOfWeek = now.getDay() - 1; // 0 = domingo
-        start.setDate(now.getDate() - dayOfWeek);
-
-        rangeLabel = `${start.toLocaleDateString("pt-BR")} A ${now.toLocaleDateString("pt-BR")}`;
+      if (!monthKey) {
+        return res.status(400).json({ message: "Invalid month format. Use YYYY-MM, current, or all" });
       }
 
-      const leads = campaigns.reduce((acc, c) => {
-        return acc + Number(getLeadsByRange(c, range));
-      }, 0);
+      const data = await storage.getFunnelByMonth(monthKey);
 
-      const opportunities = campaigns.reduce((acc, c) => {
-        return acc + Number(getOpportunitiesByRange(c, range));
-      }, 0);
+      if (monthKey === "all") {
+        return res.json({
+          range: "all",
+          rangeLabel: "Todos os meses",
+          data,
+        });
+      }
 
-      const visitsA = campaigns.reduce((acc, c) => {
-        return acc + Number(getVisitasAgendadasByRange(c, range));
-      }, 0);
+      const [year, mon] = monthKey.split("-").map(Number);
+      const targetDate = new Date(year, mon - 1, 1);
 
-      const visitsR = campaigns.reduce((acc, c) => {
-        return acc + Number(getVisitasRealizadasByRange(c, range));
-      }, 0);
+      const rangeLabel = targetDate.toLocaleDateString("pt-BR", {
+        month: "long",
+        year: "numeric",
+      });
 
-      const reservations = campaigns.reduce((acc, c) => {
-        return acc + Number(getReservaByRange(c, range));
-      }, 0);
-
-      const sales = campaigns.reduce((acc, c) => {
-        return acc + Number(getVendaByRange(c, range));
-      }, 0);
-
-      const funnel = {
-        leads,
-        opportunities,
-        visitsA: visitsA,
-        visitsR: visitsR,
-        reservations: reservations,
-        sales: sales,
-      };
-
-      res.json({
-        range,
+      return res.json({
+        range: "monthly",
         rangeLabel,
-        data: funnel,
+        data,
       });
     } catch (error) {
       console.error("Error fetching funnel:", error);
-      res.status(500).json({ message: "Failed to fetch funnel data" });
+      return res.status(500).json({ message: "Failed to fetch funnel data" });
     }
   });
 
@@ -157,25 +145,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/dashboard/tags", async (req, res) => {
+    try {
+      const { month } = req.query as { month?: string };
+
+      let monthKey: string;
+
+      if (month) {
+        if (!/^\d{4}-\d{2}$/.test(month)) {
+          return res.status(400).json({ message: "Invalid month format. Use YYYY-MM" });
+        }
+
+        const [year, mon] = month.split("-").map(Number);
+
+        if (isNaN(year) || isNaN(mon) || mon < 1 || mon > 12) {
+          return res.status(400).json({ message: "Invalid month values" });
+        }
+
+        monthKey = `${year}-${String(mon).padStart(2, "0")}`;
+      } else {
+        const now = new Date();
+        monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      }
+
+      const tags = await storage.getTagCountsByMonth(monthKey);
+
+      return res.json(tags);
+    } catch (error) {
+      console.error("Error fetching tag counts:", error);
+      return res.status(500).json({ message: "Failed to fetch tag counts" });
+    }
+  });
+
   app.get("/kommo/leads-by-stage-month", async (req: Request, res: Response) => {
     try {
-      const { stageId } = req.query;
+      const { stageId, month } = req.query;
 
       if (!stageId)
         return res.status(400).json({ error: "stageId obrigatório" });
 
-      const leads = await storage.getLeadsByStageCurrentMonth(String(stageId));
+      let leads;
+      if (month && month !== 'current') {
+        // Para meses específicos, talvez precise implementar
+        leads = await storage.getLeadsByStageCurrentMonth(String(stageId)); // placeholder
+      } else {
+        leads = await storage.getLeadsByStageCurrentMonth(String(stageId));
+      }
 
-      console.log(`Leads estágio ${stageId} mês atual:`, leads.length);
+      console.log(`Leads estágio ${stageId} mês ${month || 'atual'}:`, leads.length);
       const result = {
         stageId,
-        month: new Date().getMonth() + 1,
+        month: month || (new Date().getMonth() + 1),
         year: new Date().getFullYear(),
         total: leads.length
       };
 
       await db.insert(kommoStageMetricsLogs).values({
-        createdAt: new Date(),
+        createdAt: new Date().toISOString(),
         payload: JSON.stringify(result)
       }).catch(() => {});
 
@@ -271,86 +297,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return result;
   }
 
-  /* =======================================================
-    CALCULO FINAL
-  ======================================================= */
-
-  async function calculateStages(stageIds: string[]) {
-    const leads = await getLeadsByStages(stageIds);
-
-    if (!leads.length) {
-      return stageIds.map(id => ({
-        stageId: id,
-        leads: 0,
-        averageFirstResponseSeconds: 0,
-      }));
-    }
-
-    const grouped: Record<string, Lead[]> = {};
-    stageIds.forEach(id => grouped[id] = []);
-
-    for (const lead of leads) {
-      if (grouped[lead.status_id]) {
-        grouped[lead.status_id].push(lead);
-      }
-    }
-
-    const times = await getFirstResponseTimes(leads);
-
-    const results = [];
-
-    for (const stageId of stageIds) {
-      const list = grouped[stageId];
-
-      let total = 0;
-      let count = 0;
-
-      for (const lead of list) {
-        const t = times[lead.id];
-        if (t != null) {
-          total += t;
-          count++;
-        }
-      }
-
-      results.push({
-        stageId,
-        leads: list.length,
-        averageFirstResponseSeconds: count ? total / count : 0,
-      });
-    }
-
-    return results;
-  }
+  
 
   app.get("/kommo/stage-metrics", async (req: Request, res: Response) => {
     try {
-      const { stageA, stageB } = req.query;
+      const { month } = req.query as { month?: string };
 
-      if (!stageA || !stageB)
-        return res.status(400).json({ error: "stageA e stageB obrigatórios" });
+      const response = month && month !== 'current' 
+        ? await storage.getLeadResponseTimesSumsCurrentMonth() // placeholder
+        : await storage.getLeadResponseTimesSumsCurrentMonth();
 
-      const stageIds = [String(stageA), String(stageB)];
-
-      const stages = await calculateStages(stageIds);
-
-      const result = {
-        stages: stages.map((s, i) => ({
-          position: i + 1,
-          ...s
-        }))
-      };
-
-      await db.insert(kommoStageMetricsLogs).values({
-        createdAt: new Date(),
-        payload: JSON.stringify(result),
-      }).catch(() => {});
-
-      res.json(result);
+      
+      res.json(response);
 
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: "Erro ao calcular métricas" });
+      res.status(500).json({ error: "Erro ao calcular média de resposta entre IA x Humano" });
     }
   });
 
@@ -463,3 +425,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   return httpServer;
 }
+

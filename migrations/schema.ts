@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, numeric, timestamp, boolean, jsonb, integer, time, index, foreignKey, unique } from "drizzle-orm/pg-core"
+import { pgTable, varchar, text, numeric, timestamp, boolean, jsonb, integer, time, index, foreignKey, unique, bigint } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 
@@ -45,7 +45,6 @@ export const campaigns = pgTable("campaigns", {
 	platform: text().notNull(),
 	leadsMonthly: integer("leads_monthly"),
 	spend: numeric({ precision: 12, scale:  2 }).default('0.00').notNull(),
-	roi: numeric({ precision: 8, scale:  2 }).default('0.00').notNull(),
 	status: text().default('active').notNull(),
 	startDate: timestamp("start_date", { mode: 'string' }),
 	endDate: timestamp("end_date", { mode: 'string' }),
@@ -83,6 +82,7 @@ export const campaigns = pgTable("campaigns", {
 	revenue: numeric({ precision: 14, scale:  2 }),
 	roas: numeric({ precision: 8, scale:  2 }),
 	profit: numeric(),
+	roi: numeric({ precision: 8, scale:  0 }),
 });
 
 export const adsets = pgTable("adsets", {
@@ -112,42 +112,6 @@ export const adsets = pgTable("adsets", {
 			foreignColumns: [campaigns.id],
 			name: "adsets_campaign_id_campaigns_id_fk"
 		}).onDelete("cascade"),
-]);
-
-
-export const ads = pgTable("ads", {
-  id: varchar({ length: 255 }).primaryKey().notNull(),
-  campaignId: varchar("campaign_id", { length: 255 }).notNull(),
-  adsetId: varchar("adset_id", { length: 255 }).notNull(),
-  name: text(),
-  platform: text().default('meta'),
-  status: text(),
-  effectiveStatus: text("effective_status"),
-  isArchived: boolean("is_archived").default(false),
-  creativeId: varchar("creative_id", { length: 255 }),
-  spend: numeric({ precision: 12, scale:  2 }).default('0'),
-  clicksLast30D: integer("clicks_last_30d").default(0),
-  impressionsLast30D: integer("impressions_last_30d").default(0),
-  ctrLast30D: numeric("ctr_last_30d", { precision: 10, scale:  4 }),
-  cpcLast30D: numeric("cpc_last_30d", { precision: 12, scale:  4 }),
-  cpa: numeric({ precision: 12, scale:  4 }),
-  leads: integer().default(0),
-  createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-  index("idx_ads_adset_id").using("btree", table.adsetId.asc().nullsLast().op("text_ops")),
-  index("idx_ads_campaign_id").using("btree", table.campaignId.asc().nullsLast().op("text_ops")),
-  index("idx_ads_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
-  foreignKey({
-      columns: [table.campaignId],
-      foreignColumns: [campaigns.id],
-      name: "ads_campaign_id_campaigns_id_fk"
-    }).onDelete("cascade"),
-  foreignKey({
-      columns: [table.adsetId],
-      foreignColumns: [adsets.id],
-      name: "ads_adset_id_adsets_id_fk"
-    }).onDelete("cascade"),
 ]);
 
 export const leadStageCounts = pgTable("lead_stage_counts", {
@@ -183,12 +147,47 @@ export const campaignLeadEvents = pgTable("campaign_lead_events", {
 		}).onDelete("cascade"),
 ]);
 
+export const ads = pgTable("ads", {
+	id: varchar({ length: 255 }).primaryKey().notNull(),
+	campaignId: varchar("campaign_id", { length: 255 }).notNull(),
+	adsetId: varchar("adset_id", { length: 255 }).notNull(),
+	name: text(),
+	platform: text().default('meta'),
+	status: text(),
+	effectiveStatus: text("effective_status"),
+	isArchived: boolean("is_archived").default(false),
+	creativeId: varchar("creative_id", { length: 255 }),
+	spend: numeric({ precision: 12, scale:  2 }).default('0'),
+	clicksLast30D: integer("clicks_last_30d").default(0),
+	impressionsLast30D: integer("impressions_last_30d").default(0),
+	ctrLast30D: numeric("ctr_last_30d", { precision: 10, scale:  4 }),
+	cpcLast30D: numeric("cpc_last_30d", { precision: 12, scale:  4 }),
+	cpa: numeric({ precision: 12, scale:  4 }),
+	leads: integer().default(0),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_ads_adset_id").using("btree", table.adsetId.asc().nullsLast().op("text_ops")),
+	index("idx_ads_campaign_id").using("btree", table.campaignId.asc().nullsLast().op("text_ops")),
+	index("idx_ads_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.campaignId],
+			foreignColumns: [campaigns.id],
+			name: "ads_campaign_id_campaigns_id_fk"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.adsetId],
+			foreignColumns: [adsets.id],
+			name: "ads_adset_id_adsets_id_fk"
+		}).onDelete("cascade"),
+]);
+
 export const leadClosingTime = pgTable("lead_closing_time", {
-	id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
-	leadId: integer("lead_id").notNull(),
 	closingDays: integer("closing_days").notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	pipelineId: integer("pipeline_id").notNull(),
+	leadId: numeric("lead_id").primaryKey().notNull(),
+	id: numeric(),
 });
 
 export const kommoStageMetricsLogs = pgTable("kommo_stage_metrics_logs", {
@@ -196,3 +195,17 @@ export const kommoStageMetricsLogs = pgTable("kommo_stage_metrics_logs", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	payload: jsonb().notNull(),
 });
+
+export const leadResponseTimes = pgTable("lead_response_times", {
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	leadId: bigint("lead_id", { mode: "number" }).primaryKey().notNull(),
+	leadCreatedAt: timestamp("lead_created_at", { mode: 'string' }).notNull(),
+	firstResponseAt: timestamp("first_response_at", { mode: 'string' }).notNull(),
+	responseTimeHuman: integer("response_time_human").notNull(),
+	responseTimeAi: integer("response_time_ai"),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+});
+
+function gen_random_uuid(): import("drizzle-orm").SQL<unknown> {
+  return sql`gen_random_uuid()`;
+}

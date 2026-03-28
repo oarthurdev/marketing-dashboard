@@ -1,6 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type FunnelStageKey =
   | "leads"
@@ -19,14 +18,10 @@ export type SalesFunnelData = {
   sales: number;
 };
 
-type Range = "daily" | "weekly" | "monthly";
-
 type Props = {
   data: SalesFunnelData;
   rangeLabel?: string;
   className?: string;
-  funnelRange?: Range;
-  setFunnelRange?: (v: Range) => void;
 };
 
 type TooltipState = {
@@ -44,7 +39,7 @@ const formatInt = (n: number) =>
 const formatPct = (n: number) =>
   `${Math.round(n)}%`;
 
-export default function SalesFunnel({ data, rangeLabel, className, funnelRange, setFunnelRange }: Props) {
+export default function SalesFunnel({ data, rangeLabel, className }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [tip, setTip] = useState<TooltipState | null>(null);
 
@@ -100,21 +95,6 @@ export default function SalesFunnel({ data, rangeLabel, className, funnelRange, 
               Passe o mouse para ver detalhes
             </p>
           </div>
-
-          {setFunnelRange && (
-            <div className="ml-4">
-              <Select value={funnelRange} onValueChange={(v) => setFunnelRange(v as Range)}>
-                <SelectTrigger className="w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Diário</SelectItem>
-                  <SelectItem value="weekly">Semanal</SelectItem>
-                  <SelectItem value="monthly">Mensal</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
       </div>
 

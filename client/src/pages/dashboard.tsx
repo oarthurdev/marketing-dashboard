@@ -1,14 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart3, Activity } from "lucide-react";
-
 import SalesFunnel from "@/components/SalesFunnel";
 import { LeadsPipelineChart } from "@/components/LeadsPipelineChart";
 import ThemeToggle from "@/components/ui/theme-toggle";
 import StageResponseChart from "@/components/StageResponseChart";
 import ErrosDaIAChart from "@/components/ErrosDaIAChart";
+import { TagPieChart } from "@/components/TagPieChart";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface DashboardData {
   totalRevenue: number;
@@ -29,36 +30,50 @@ interface KommoStatus {
 }
 
 interface StageMetricsResponse {
-  stages: {
-    position: number;
-    stageId: string;
-    averageFirstResponseSeconds: number;
-  }[];
+  monthStart: string;
+  monthEnd: string;
+  totalRows: number;
+  sumResponseTimeHuman: number; // segundos (total do mês)
+  sumResponseTimeAi: number;    // segundos (total do mês)
 }
 
-async function fetchStageMetrics(): Promise<StageMetricsResponse> {
-  const res = await fetch(
-    "/kommo/stage-metrics?stageA=90776156&stageB=90776160"
-  );
+
+async function fetchStageMetrics(month: string): Promise<StageMetricsResponse> {
+  const res = await fetch(`/kommo/stage-metrics?month=${month}`);
   if (!res.ok) throw new Error("Erro métricas Kommo");
   return res.json();
 }
 
 export default function Dashboard() {
-  const [funnelRange, setFunnelRange] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+
+  const monthOptions = useMemo(() => {
+    const options = [];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const label = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      options.push({ value, label });
+    }
+    return options;
+  }, []);
 
   const { data: funnelData } = useQuery({
-    queryKey: ["sales-funnel", funnelRange],
+    queryKey: ["sales-funnel", selectedMonth],
     queryFn: async () => {
-      const res = await fetch(`/api/funnel?range=${funnelRange}`);
+      const res = await fetch(`/api/funnel?month=${selectedMonth}`);
       if (!res.ok) throw new Error("Erro funil");
       return res.json();
     },
   });
 
   const { data: stageMetrics, isLoading: loadingStages } = useQuery({
-    queryKey: ["kommo-stage-metrics"],
-    queryFn: fetchStageMetrics,
+    queryKey: ["kommo-stage-metrics", selectedMonth],
+    queryFn: () => fetchStageMetrics(selectedMonth),
     refetchInterval: 60000,
   });
 
@@ -78,12 +93,26 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-4">
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
       <div className="container mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 auto-rows-[minmax(180px,auto)]">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 auto-rows-[minmax(180px,auto)]">
 
           {/* FUNIL — destaque principal */}
           <Card className="xl:col-span-2 xl:row-span-2">
@@ -96,10 +125,21 @@ export default function Dashboard() {
                 <SalesFunnel
                   rangeLabel={funnelData.rangeLabel}
                   data={funnelData.data}
-                  funnelRange={funnelRange}
-                  setFunnelRange={setFunnelRange}
                 />
               )}
+            </CardContent>
+          </Card>
+
+          {/* TAGS — abaixo do funil */}
+          <Card className="xl:col-span-2">
+            <CardHeader>
+              <CardTitle>Distribuição por Tags</CardTitle>
+              <CardDescription>
+                Quantidade de leads agrupados por tag
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TagPieChart month={selectedMonth} />
             </CardContent>
           </Card>
 
@@ -110,7 +150,7 @@ export default function Dashboard() {
               <CardDescription>Distribuição por etapa</CardDescription>
             </CardHeader>
             <CardContent>
-              <LeadsPipelineChart />
+              <LeadsPipelineChart month={selectedMonth} />
             </CardContent>
           </Card>
 
@@ -118,15 +158,13 @@ export default function Dashboard() {
           <Card className="xl:col-span-1">
             <CardHeader>
               <CardTitle>Tempo de Resposta</CardTitle>
-              <CardDescription>
-                Comparação: IA vs Atendimento Humano
-              </CardDescription>
+              <CardDescription>Comparação: IA vs Atendimento Humano</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center">
               {loadingStages ? (
                 <p className="text-sm text-muted-foreground">Calculando...</p>
               ) : (
-                stageMetrics && <StageResponseChart data={stageMetrics.stages} />
+                stageMetrics && <StageResponseChart metrics={stageMetrics} />
               )}
             </CardContent>
           </Card>
@@ -140,7 +178,7 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex items-center">
-              <ErrosDaIAChart stageId="100621824" />
+              <ErrosDaIAChart stageId="100621824" month={selectedMonth} />
             </CardContent>
           </Card>
 

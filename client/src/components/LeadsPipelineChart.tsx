@@ -28,19 +28,21 @@ type Mode = "compact" | "detailed";
 
 export function LeadsPipelineChart({
   mode = "detailed",
+  month,
 }: {
   mode?: Mode;
+  month?: string;
 }) {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/leads-metrics`)
+    fetch(`/api/leads-metrics?month=${month || 'current'}`)
       .then((res) => res.json())
       .then(setData)
       .finally(() => setLoading(false));
-  }, []);
+  }, [month]);
 
   if (loading) return <p>Carregando pipelines...</p>;
   if (!data || data.pipelines.length === 0)

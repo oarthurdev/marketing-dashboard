@@ -67,6 +67,8 @@ type Campaign = AnyRow & {
   cpc_last_30d?: number | string | null;
   cpa?: number | string | null;
 
+  revenue?: number | string | null;
+
   leads?: number | null;
 
   start_date?: string | null;
@@ -372,6 +374,11 @@ export default function Campaigns() {
     const q = search.trim().toLowerCase();
 
     return campaigns.filter((c) => {
+      const name = (c.name || "").trim().toLowerCase();
+
+      // 🚫 Ignora campanhas chamadas "Fale Conosco"
+      if (name === "fale conosco") return false;
+      
       const status = normalizeStatus(c);
       const platform = (c.platform || "").toLowerCase();
 
@@ -422,6 +429,33 @@ export default function Campaigns() {
     return all;
   }, [selectedCampaign, selectedAdsetId]);
 
+  const calculateCampaignValue = (filteredCampaigns: Campaign[]): number | string=> {
+    // Soma revenue válido
+    const revenue = filteredCampaigns.reduce(
+      (acc, campaign) =>
+        acc + (Number(campaign?.revenue ?? 0) > 0 ? Number(campaign.revenue) : 0),
+      0
+    );
+
+    // Soma spend válido
+    const totalSpend = filteredCampaigns.reduce((acc, campaign) => {
+      const spend = toNumber(campaign.spend ?? 0);
+      if (spend !== 0) {
+        return acc + spend;
+      }
+      return acc;
+    }, 0);
+
+    const fixedBase = 1500 + 2000 + 1500;
+
+    if (revenue > 0) {
+      const revenueReturn = (revenue - (fixedBase + totalSpend)) / (fixedBase + totalSpend) * 100;
+      return revenueReturn.toFixed(2);
+    }
+
+    return "—";
+  }
+
   const sortedAds = useMemo(() => {
     const arr = [...adsForSelected];
 
@@ -461,6 +495,16 @@ export default function Campaigns() {
   const cStatus = selectedCampaign ? normalizeStatus(selectedCampaign) : "UNKNOWN";
   const cpl = selectedCampaign ? computeCPL(selectedCampaign.spend, selectedCampaign.leads) : null;
 
+  function calculateROAS(filteredCampaigns: Campaign[]): React.ReactNode {
+    const totalSpend = filteredCampaigns.reduce((sum, c) => sum + toNumber(c.spend), 0);
+    const totalRevenue = filteredCampaigns.reduce((sum, c) => sum + toNumber(c.revenue ?? 0), 0);
+
+    if (totalSpend === 0) return "—";
+    
+    const roas = totalRevenue / totalSpend;
+    return roas.toFixed(2);
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -486,7 +530,7 @@ export default function Campaigns() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center">
               <DollarSign className="w-4 h-4 mr-2" />
-              Gasto (filtrado)
+              Gasto geral
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -495,46 +539,42 @@ export default function Campaigns() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="md:col-span-1">
+          <CardHeader className="pb-1">
             <CardTitle className="text-sm font-medium flex items-center">
-              <Users className="w-4 h-4 mr-2" />
-              Leads (CTA)
+              <DollarSign className="w-4 h-4 mr-2" />
+              Valor das Vendas
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{topStats.totalLeads}</div>
-            <p className="text-xs text-muted-foreground">
-              CPL: {topStats.avgCpl ? moneyBRL(topStats.avgCpl) : "—"}
-            </p>
+            <div className="text-2xl font-bold">{moneyBRL(filteredCampaigns.reduce((sum, c) => sum + toNumber(c.revenue ?? 0), 0))}</div>
+            <p className="text-xs text-muted-foreground">Valor das vendas ganhas</p>
+          </CardContent>
+        </Card>
+
+        <Card className="md:col-span-1">
+          <CardHeader className="pb-1">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <DollarSign className="w-4 h-4 mr-2" />
+              ROI
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{calculateCampaignValue(filteredCampaigns)}</div>
+            <p className="text-xs text-muted-foreground">ROI do recorte atual</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center">
-              <MousePointerClick className="w-4 h-4 mr-2" />
-              Cliques (30d)
+              <DollarSign className="w-4 h-4 mr-2" />
+              ROAS
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{topStats.totalClicks.toLocaleString("pt-BR")}</div>
-            <p className="text-xs text-muted-foreground">
-              CPA/clique: {topStats.avgCpaClick ? moneyBRL(topStats.avgCpaClick) : "—"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center">
-              <Eye className="w-4 h-4 mr-2" />
-              Impressões (30d)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{topStats.totalImpr.toLocaleString("pt-BR")}</div>
-            <p className="text-xs text-muted-foreground">Visibilidade geral</p>
+            <div className="text-2xl font-bold">{calculateROAS(filteredCampaigns)}</div>
+            <p className="text-xs text-muted-foreground">ROAS do recorte atual</p>
           </CardContent>
         </Card>
 
@@ -663,19 +703,6 @@ export default function Campaigns() {
                               {statusLabel(status)}
                             </Badge>
                           </div>
-
-                          <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-                            <div className="rounded-lg bg-muted/30 p-2">
-                              <div className="text-muted-foreground">Gasto</div>
-                              <div className="font-semibold">{moneyBRL(c.spend)}</div>
-                            </div>
-                            <div className="rounded-lg bg-muted/30 p-2">
-                              <div className="text-muted-foreground">ROI</div>
-                              <div className="font-semibold">
-                                {(c.roi || 0)}%
-                              </div>
-                            </div>
-                          </div>
                         </button>
                       );
                     })}
@@ -714,35 +741,9 @@ export default function Campaigns() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div className="rounded-xl border bg-muted/20 p-3">
                     <div className="text-xs text-muted-foreground flex items-center gap-2">
-                      <DollarSign className="w-4 h-4" /> Gasto (30d)
+                      <DollarSign className="w-4 h-4" /> Gasto
                     </div>
                     <div className="text-lg font-semibold mt-1">{moneyBRL(selectedCampaign.spend)}</div>
-                  </div>
-
-                  <div className="rounded-xl border bg-muted/20 p-3">
-                    <div className="text-xs text-muted-foreground flex items-center gap-2">
-                      <MousePointerClick className="w-4 h-4" /> Cliques (30d)
-                    </div>
-                    <div className="text-lg font-semibold mt-1">
-                      {(selectedCampaign.clicks_last_30d || 0).toLocaleString("pt-BR")}
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border bg-muted/20 p-3">
-                    <div className="text-xs text-muted-foreground flex items-center gap-2">
-                      <Users className="w-4 h-4" /> Leads (CTA)
-                    </div>
-                    <div className="text-lg font-semibold mt-1">{selectedCampaign.leads || 0}</div>
-                  </div>
-
-                  <div className="rounded-xl border bg-muted/20 p-3">
-                    <div className="text-xs text-muted-foreground flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4" /> CPA / CPL
-                    </div>
-                    <div className="text-sm font-semibold mt-1">
-                      <div>CPA: {selectedCampaign.cpa ? moneyBRL(selectedCampaign.cpa) : "—"}</div>
-                      <div>CPL: {cpl !== null ? moneyBRL(cpl) : "—"}</div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -799,9 +800,6 @@ export default function Campaigns() {
                           <TableRow>
                             <TableHead>Conjunto</TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Leads</TableHead>
-                            <TableHead className="text-right">Cliques (30d)</TableHead>
-                            <TableHead className="text-right">Impressões</TableHead>
                             <TableHead className="text-right">Gasto</TableHead>
                             <TableHead className="text-right">CPA</TableHead>
                           </TableRow>
@@ -827,13 +825,6 @@ export default function Campaigns() {
                                   <Badge variant="outline" className={["border", statusBadgeClass(st)].join(" ")}>
                                     {statusLabel(st)}
                                   </Badge>
-                                </TableCell>
-                                <TableCell className="text-right">{as.leads || 0}</TableCell>
-                                <TableCell className="text-right">
-                                  {(as.clicks_last_30d || 0).toLocaleString("pt-BR")}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {(as.impressions_last_30d || 0).toLocaleString("pt-BR")}
                                 </TableCell>
                                 <TableCell className="text-right">{moneyBRL(as.spend)}</TableCell>
                                 <TableCell className="text-right">{as.cpa ? moneyBRL(as.cpa) : "—"}</TableCell>
@@ -886,10 +877,6 @@ export default function Campaigns() {
                           <TableRow>
                             <TableHead>Anúncio</TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Leads</TableHead>
-                            <TableHead className="text-right">Cliques (30d)</TableHead>
-                            <TableHead className="text-right">CTR</TableHead>
-                            <TableHead className="text-right">CPC</TableHead>
                             <TableHead className="text-right">Gasto</TableHead>
                             <TableHead className="text-right">CPA</TableHead>
                           </TableRow>
@@ -917,16 +904,6 @@ export default function Campaigns() {
                                   <Badge variant="outline" className={["border", statusBadgeClass(st)].join(" ")}>
                                     {statusLabel(st)}
                                   </Badge>
-                                </TableCell>
-                                <TableCell className="text-right">{ad.leads || 0}</TableCell>
-                                <TableCell className="text-right">
-                                  {(ad.clicks_last_30d || 0).toLocaleString("pt-BR")}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {(ad.ctr_last_30d ? pct(ad.ctr_last_30d, 2) : "—")}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {(ad.cpc_last_30d ? moneyBRL(ad.cpc_last_30d) : "—")}
                                 </TableCell>
                                 <TableCell className="text-right">{moneyBRL(ad.spend)}</TableCell>
                                 <TableCell className="text-right">{ad.cpa ? moneyBRL(ad.cpa) : "—"}</TableCell>

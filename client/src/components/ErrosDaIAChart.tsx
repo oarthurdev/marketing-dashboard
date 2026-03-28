@@ -4,9 +4,10 @@ import { motion, animate } from "framer-motion";
 interface Props {
   stageId: string;
   title?: string;
+  month?: string;
 }
 
-export default function KommoStageChart({ stageId, title = "Erros da IA" }: Props) {
+export default function KommoStageChart({ stageId, title = "Erros da IA", month }: Props) {
   const [value, setValue] = useState(0);
   const [display, setDisplay] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -15,7 +16,7 @@ export default function KommoStageChart({ stageId, title = "Erros da IA" }: Prop
     async function load() {
       try {
         setLoading(true);
-        const res = await fetch(`/kommo/leads-by-stage-month?stageId=${stageId}`);
+        const res = await fetch(`/kommo/leads-by-stage-month?stageId=${stageId}&month=${month || 'current'}`);
         const data = await res.json();
         setValue(data.total || 0);
       } catch (e) {
@@ -26,7 +27,7 @@ export default function KommoStageChart({ stageId, title = "Erros da IA" }: Prop
     }
 
     load();
-  }, [stageId]);
+  }, [stageId, month]);
 
   useEffect(() => {
     const controls = animate(display, value, {
@@ -39,10 +40,10 @@ export default function KommoStageChart({ stageId, title = "Erros da IA" }: Prop
   }, [value]);
 
   return (
-    <div className="w-full max-w-xs rounded-2xl bg-zinc-900 text-white p-6 shadow-xl border border-zinc-800">
+    <div className="w-full rounded-2xl bg-zinc-900 text-white p-6 shadow-xl border border-zinc-800">
       {/* header */}
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-sm font-medium text-zinc-300">{title}</h3>
+        <h3 className="text-sm font-medium text-zinc-300"><center>{title}</center></h3>
         <span className="text-xs text-zinc-500">mês atual</span>
       </div>
 
