@@ -83,6 +83,21 @@ function normalizeMonthKey(value: any): string | null {
   return null;
 }
 
+function parseTags(value: unknown): Array<{ name?: string }> {
+  if (Array.isArray(value)) return value as Array<{ name?: string }>;
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+}
+
 export interface IStorage {
   // Metrics
   getMetrics(limit?: number): Promise<Metrics[]>;
@@ -596,9 +611,11 @@ class HybridStorage implements IStorage {
             tag->>'name' AS tag,
             COUNT(DISTINCT lead_id)::int AS total
           FROM kommo_leads
-          JOIN LATERAL jsonb_array_elements(COALESCE(tags_json, '[]'::jsonb)) AS tag ON TRUE
+          JOIN LATERAL jsonb_array_elements(
+            COALESCE(NULLIF(trim(tags_json::text), '')::jsonb, '[]'::jsonb)
+          ) AS tag ON TRUE
           WHERE is_deleted = false
-            ${forAll ? sql`` : sql`AND year_ref = split_part(${month}, '-', 1)::int AND month_num = split_part(${month}, '-', 2)::int`}
+            ${forAll ? sql`` : sql`AND to_char(COALESCE(month_ref::date, created_at::date), 'YYYY-MM') = ${month}`}
             AND COALESCE(tag->>'name', '') <> ''
           GROUP BY tag->>'name'
           ORDER BY total DESC, tag->>'name' ASC;
@@ -612,18 +629,13 @@ class HybridStorage implements IStorage {
     }
 
     const counts = new Map<string, number>();
-    const forAll = month === 'all';
 
     for (const lead of this.memoryLeads.values()) {
       const leadMonth = normalizeMonthKey(lead?.month_ref) ?? normalizeMonthKey(lead?.created_at);
       if (!forAll && leadMonth !== month) continue;
       if (lead?.is_deleted) continue;
 
-      const tags = Array.isArray(lead?.tags)
-        ? lead.tags
-        : Array.isArray(lead?.tags_json)
-        ? lead.tags_json
-        : [];
+      const tags = parseTags(lead?.tags_json ?? lead?.tags);
 
       for (const tag of tags) {
         const name = String(tag?.name ?? '').trim();
@@ -854,7 +866,7 @@ class HybridStorage implements IStorage {
             )::int AS sales
           FROM kommo_leads
           WHERE is_deleted = false
-            ${forAll ? sql`` : sql`AND year_ref = split_part(${month}, '-', 1)::int AND month_num = split_part(${month}, '-', 2)::int`};
+            ${forAll ? sql`` : sql`AND to_char(COALESCE(month_ref::date, created_at::date), 'YYYY-MM') = ${month}`};
         `);
 
         const row = extractRows<any>(result)[0] ?? {};
@@ -882,8 +894,6 @@ class HybridStorage implements IStorage {
       sales: 0,
     };
 
-    const forAll = month === 'all';
-
     for (const lead of this.memoryLeads.values()) {
       const leadMonth = normalizeMonthKey(lead?.month_ref) ?? normalizeMonthKey(lead?.created_at);
       if (!forAll && leadMonth !== month) continue;
@@ -891,11 +901,7 @@ class HybridStorage implements IStorage {
 
       empty.leads += 1;
 
-      const tags = Array.isArray(lead?.tags)
-        ? lead.tags
-        : Array.isArray(lead?.tags_json)
-        ? lead.tags_json
-        : [];
+      const tags = parseTags(lead?.tags_json ?? lead?.tags);
 
       if (tags.some((tag: any) => String(tag?.name ?? '').toLowerCase().includes('oportunidade'))) {
         empty.opportunities += 1;

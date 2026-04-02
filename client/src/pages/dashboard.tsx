@@ -53,6 +53,8 @@ export default function Dashboard() {
   const monthOptions = useMemo(() => {
     const options = [];
     const now = new Date();
+    options.push({ value: "all", label: "Todos os meses" });
+
     for (let i = 0; i < 12; i++) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -65,7 +67,7 @@ export default function Dashboard() {
   const { data: funnelData } = useQuery({
     queryKey: ["sales-funnel", selectedMonth],
     queryFn: async () => {
-      const res = await fetch(`/api/funnel?month=${selectedMonth}`);
+      const res = await fetch(`/api/dashboard/funnel?month=${selectedMonth}`);
       if (!res.ok) throw new Error("Erro funil");
       return res.json();
     },
@@ -73,7 +75,7 @@ export default function Dashboard() {
 
   const { data: stageMetrics, isLoading: loadingStages } = useQuery({
     queryKey: ["kommo-stage-metrics", selectedMonth],
-    queryFn: () => fetchStageMetrics(selectedMonth),
+    queryFn: () => fetchStageMetrics(selectedMonth === "all" ? "current" : selectedMonth),
     refetchInterval: 60000,
   });
 
