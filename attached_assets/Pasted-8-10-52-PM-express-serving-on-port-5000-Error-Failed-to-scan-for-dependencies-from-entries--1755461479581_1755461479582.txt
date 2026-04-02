@@ -1,0 +1,42 @@
+8:10:52 PM [express] serving on port 5000
+Error:   Failed to scan for dependencies from entries:
+  /home/runner/workspace/client/index.html
+
+  ✘ [ERROR] No matching export in "client/src/components/kpi-grid.tsx" for import "KpiGrid"
+
+    client/src/pages/dashboard.tsx:27:9:
+      27 │ import { KpiGrid } from "@/components/kpi-grid";
+         ╵          ~~~~~~~
+
+
+✘ [ERROR] No matching export in "client/src/components/charts-section.tsx" for import "ChartsSection"
+
+    client/src/pages/dashboard.tsx:28:9:
+      28 │ import { ChartsSection } from "@/components/charts-section";
+         ╵          ~~~~~~~~~~~~~
+
+
+✘ [ERROR] No matching export in "client/src/components/campaign-table.tsx" for import "CampaignTable"
+
+    client/src/pages/dashboard.tsx:29:9:
+      29 │ import { CampaignTable } from "@/components/campaign-table";
+         ╵          ~~~~~~~~~~~~~
+
+
+✘ [ERROR] No matching export in "client/src/components/activity-feed.tsx" for import "ActivityFeed"
+
+    client/src/pages/dashboard.tsx:30:9:
+      30 │ import { ActivityFeed } from "@/components/activity-feed";
+         ╵          ~~~~~~~~~~~~
+
+
+    at failureErrorWithLog (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:1472:15)
+    at /home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:945:25
+    at runOnEndCallbacks (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:1315:45)
+    at buildResponseToResult (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:943:7)
+    at /home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:955:9
+    at new Promise (<anonymous>)
+    at requestCallbacks.on-end (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:954:54)
+    at handleRequest (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:647:17)
+    at handleIncomingPacket (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:672:7)
+    at Socket.readFromStdout (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:600:7)
