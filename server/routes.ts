@@ -38,6 +38,37 @@ function normalizeMonthQuery(month?: string): string | null {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const reportGenerator = new ReportGenerator();
+  const buildRangeLabel = (monthKey: string) => {
+    if (monthKey === "all") return "Todos os meses";
+    const [year, mon] = monthKey.split("-").map(Number);
+    const targetDate = new Date(year, mon - 1, 1);
+    return targetDate.toLocaleDateString("pt-BR", {
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  const handleFunnelRequest = async (req: Request, res: Response) => {
+    try {
+      const { month } = req.query as { month?: string };
+      const monthKey = normalizeMonthQuery(month);
+
+      if (!monthKey) {
+        return res.status(400).json({ message: "Invalid month format. Use YYYY-MM, current, or all" });
+      }
+
+      const data = await storage.getFunnelByMonth(monthKey);
+
+      return res.json({
+        range: monthKey === "all" ? "all" : "monthly",
+        rangeLabel: buildRangeLabel(monthKey),
+        data,
+      });
+    } catch (error) {
+      console.error("Error fetching funnel:", error);
+      return res.status(500).json({ message: "Failed to fetch funnel data" });
+    }
+  };
 
   // Schedule daily report generation at 8 AM
   schedule.scheduleJob("0 8 * * *", async () => {
@@ -49,43 +80,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/funnel", async (req, res) => {
-    try {
-      const { month } = req.query as { month?: string };
-      const monthKey = normalizeMonthQuery(month);
-
-      if (!monthKey) {
-        return res.status(400).json({ message: "Invalid month format. Use YYYY-MM, current, or all" });
-      }
-
-      const data = await storage.getFunnelByMonth(monthKey);
-
-      if (monthKey === "all") {
-        return res.json({
-          range: "all",
-          rangeLabel: "Todos os meses",
-          data,
-        });
-      }
-
-      const [year, mon] = monthKey.split("-").map(Number);
-      const targetDate = new Date(year, mon - 1, 1);
-
-      const rangeLabel = targetDate.toLocaleDateString("pt-BR", {
-        month: "long",
-        year: "numeric",
-      });
-
-      return res.json({
-        range: "monthly",
-        rangeLabel,
-        data,
-      });
-    } catch (error) {
-      console.error("Error fetching funnel:", error);
-      return res.status(500).json({ message: "Failed to fetch funnel data" });
-    }
-  });
+  app.get("/api/dashboard/funnel", handleFunnelRequest);
 
   app.get(
     "/api/leads-metrics",
@@ -148,24 +143,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/dashboard/tags", async (req, res) => {
     try {
       const { month } = req.query as { month?: string };
+      const monthKey = normalizeMonthQuery(month);
 
-      let monthKey: string;
-
-      if (month) {
-        if (!/^\d{4}-\d{2}$/.test(month)) {
-          return res.status(400).json({ message: "Invalid month format. Use YYYY-MM" });
-        }
-
-        const [year, mon] = month.split("-").map(Number);
-
-        if (isNaN(year) || isNaN(mon) || mon < 1 || mon > 12) {
-          return res.status(400).json({ message: "Invalid month values" });
-        }
-
-        monthKey = `${year}-${String(mon).padStart(2, "0")}`;
-      } else {
-        const now = new Date();
-        monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      if (!monthKey) {
+        return res.status(400).json({ message: "Invalid month format. Use YYYY-MM, current, or all" });
       }
 
       const tags = await storage.getTagCountsByMonth(monthKey);
@@ -176,6 +157,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: "Failed to fetch tag counts" });
     }
   });
+
+  // Backward-compatible alias
+  app.get("/api/funnel", handleFunnelRequest);
 
   app.get("/kommo/leads-by-stage-month", async (req: Request, res: Response) => {
     try {
@@ -425,4 +409,3 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   return httpServer;
 }
-
