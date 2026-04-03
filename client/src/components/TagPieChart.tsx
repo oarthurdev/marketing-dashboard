@@ -33,7 +33,7 @@ function formatPct(value: number) {
   return `${(value * 100).toFixed(1)}%`;
 }
 
-export function TagPieChart({ month }: { month?: string }) {
+export function TagPieChart({ dateFrom, dateTo }: { dateFrom?: string; dateTo?: string }) {
   const [data, setData] = useState<TagCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +45,10 @@ export function TagPieChart({ month }: { month?: string }) {
       try {
         setLoading(true);
         setError(null);
-        const url = month ? `/api/dashboard/tags?month=${encodeURIComponent(month)}` : '/api/dashboard/tags';
+        const params = new URLSearchParams();
+        if (dateFrom) params.set('dateFrom', dateFrom);
+        if (dateTo) params.set('dateTo', dateTo);
+        const url = params.toString() ? `/api/dashboard/tags?${params.toString()}` : '/api/dashboard/tags';
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
@@ -60,7 +63,7 @@ export function TagPieChart({ month }: { month?: string }) {
     return () => {
       alive = false;
     };
-  }, [month]);
+  }, [dateFrom, dateTo]);
 
   const { total, slices } = useMemo(() => {
     const t = data.reduce((acc, d) => acc + (Number(d.total) || 0), 0);

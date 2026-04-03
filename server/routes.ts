@@ -36,6 +36,33 @@ function normalizeMonthQuery(month?: string): string | null {
   return `${year}-${String(monthNum).padStart(2, "0")}`;
 }
 
+function normalizeDayOfMonthQuery(day?: string): number | "all" | null {
+  if (!day || day === "all") return "all";
+
+  const d = Number(day);
+  if (!Number.isInteger(d) || d < 1 || d > 31) return null;
+
+  return d;
+}
+
+function normalizeDateRangeQuery(dateFrom?: string, dateTo?: string): {from: Date; to: Date} | "all" | null {
+  if ((!dateFrom || dateFrom === "all") && (!dateTo || dateTo === "all")) return "all";
+
+  const parsedFrom = dateFrom && dateFrom !== "all" ? new Date(dateFrom) : null;
+  const parsedTo = dateTo && dateTo !== "all" ? new Date(dateTo) : null;
+
+  if ((parsedFrom && isNaN(parsedFrom.getTime())) || (parsedTo && isNaN(parsedTo.getTime()))) {
+    return null;
+  }
+
+  const from = parsedFrom || parsedTo || new Date();
+  const to = parsedTo || parsedFrom || new Date();
+
+  if (from > to) return null;
+
+  return { from, to };
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   const reportGenerator = new ReportGenerator();
   const buildRangeLabel = (monthKey: string) => {
@@ -50,18 +77,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const handleFunnelRequest = async (req: Request, res: Response) => {
     try {
-      const { month } = req.query as { month?: string };
-      const monthKey = normalizeMonthQuery(month);
+      const { dateFrom, dateTo } = req.query as { dateFrom?: string; dateTo?: string };
+      const dateRange = normalizeDateRangeQuery(dateFrom, dateTo);
 
-      if (!monthKey) {
-        return res.status(400).json({ message: "Invalid month format. Use YYYY-MM, current, or all" });
+      console.log(`Funnel request for dateFrom: ${dateFrom}, dateTo: ${dateTo}, normalized dateRange: ${JSON.stringify(dateRange)}`);
+
+      if (dateRange === null) {
+        return res.status(400).json({ message: "Invalid date range. Use dateFrom/dateTo as YYYY-MM-DD or all, with dateFrom <= dateTo" });
       }
 
-      const data = await storage.getFunnelByMonth(monthKey);
+      const data = await storage.getFunnelByDateRange(dateRange);
+
+      const range = dateRange === 'all' ? 'all' : 'date-range';
+
+      const rangeLabel = dateRange === 'all'
+        ? 'Todos os períodos'
+        : `De ${dateRange.from.toLocaleDateString('pt-BR')} a ${dateRange.to.toLocaleDateString('pt-BR')}`;
 
       return res.json({
-        range: monthKey === "all" ? "all" : "monthly",
-        rangeLabel: buildRangeLabel(monthKey),
+        range,
+        rangeLabel,
         data,
       });
     } catch (error) {
@@ -84,8 +119,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get(
     "/api/leads-metrics",
-    async (_req: Request, res: Response) => {
+    async (req: Request, res: Response) => {
       try {
+        const { dateFrom, dateTo } = req.query as { dateFrom?: string; dateTo?: string };
+        const dateRange = normalizeDateRangeQuery(dateFrom, dateTo);
+
+        if (dateRange === null) {
+          return res.status(400).json({ message: "Invalid date range. Use dateFrom/dateTo as YYYY-MM-DD or all, with dateFrom <= dateTo" });
+        }
+
         /**
          * Esperado do storage:
          * - getAllPipelines()
@@ -142,14 +184,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/dashboard/tags", async (req, res) => {
     try {
-      const { month } = req.query as { month?: string };
-      const monthKey = normalizeMonthQuery(month);
+      const { dateFrom, dateTo } = req.query as { dateFrom?: string; dateTo?: string };
+      const dateRange = normalizeDateRangeQuery(dateFrom, dateTo);
 
-      if (!monthKey) {
-        return res.status(400).json({ message: "Invalid month format. Use YYYY-MM, current, or all" });
+      if (dateRange === null) {
+        return res.status(400).json({ message: "Invalid date range. Use dateFrom/dateTo as YYYY-MM-DD or all, with dateFrom <= dateTo" });
       }
 
-      const tags = await storage.getTagCountsByMonth(monthKey);
+      const tags = await storage.getTagCountsByDateRange(dateRange);
 
       return res.json(tags);
     } catch (error) {
@@ -161,26 +203,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Backward-compatible alias
   app.get("/api/funnel", handleFunnelRequest);
 
+  app.get("/kommo/stage-metrics", async (req: Request, res: Response) => {
+    try {
+      const { month } = req.query;
+
+      if (!month || month !== 'current') {
+        return res.status(400).json({ error: "Apenas month=current é suportado" });
+      }
+
+      const metrics = await storage.getLeadResponseTimesSumsCurrentMonth();
+
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching stage metrics:", error);
+      res.status(500).json({ error: "Erro ao buscar métricas de resposta" });
+    }
+  });
+
   app.get("/kommo/leads-by-stage-month", async (req: Request, res: Response) => {
     try {
-      const { stageId, month } = req.query;
+      const { stageId, dateFrom, dateTo } = req.query;
 
       if (!stageId)
         return res.status(400).json({ error: "stageId obrigatório" });
 
-      let leads;
-      if (month && month !== 'current') {
-        // Para meses específicos, talvez precise implementar
-        leads = await storage.getLeadsByStageCurrentMonth(String(stageId)); // placeholder
-      } else {
-        leads = await storage.getLeadsByStageCurrentMonth(String(stageId));
+      const dateRange = normalizeDateRangeQuery(dateFrom as string, dateTo as string);
+
+      if (dateRange === null) {
+        return res.status(400).json({ message: "Invalid date range. Use dateFrom/dateTo as YYYY-MM-DD or all, with dateFrom <= dateTo" });
       }
 
-      console.log(`Leads estágio ${stageId} mês ${month || 'atual'}:`, leads.length);
+      let leads;
+      if (dateRange === 'all') {
+        // Para todos os períodos, buscar leads atuais
+        leads = await storage.getLeadsByStageCurrentMonth(String(stageId));
+      } else {
+        // Para range específico, filtrar por data
+        const allLeads = await storage.getLeadsByStageCurrentMonth(String(stageId));
+        leads = allLeads.filter(lead => {
+          const leadDate = new Date(lead.created_at * 1000);
+          return leadDate >= dateRange.from && leadDate <= dateRange.to;
+        });
+      }
+
+      console.log(`Leads estágio ${stageId} período ${dateFrom || 'all'} - ${dateTo || 'all'}:`, leads.length);
       const result = {
         stageId,
-        month: month || (new Date().getMonth() + 1),
-        year: new Date().getFullYear(),
+        dateFrom: dateFrom || 'all',
+        dateTo: dateTo || 'all',
         total: leads.length
       };
 

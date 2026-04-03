@@ -2,13 +2,17 @@ import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, Activity } from "lucide-react";
+import { BarChart3, Activity, Filter } from "lucide-react";
 import SalesFunnel from "@/components/SalesFunnel";
 import { LeadsPipelineChart } from "@/components/LeadsPipelineChart";
 import ThemeToggle from "@/components/ui/theme-toggle";
 import StageResponseChart from "@/components/StageResponseChart";
 import ErrosDaIAChart from "@/components/ErrosDaIAChart";
 import { TagPieChart } from "@/components/TagPieChart";
+import { Calendar } from "@/components/ui/calendar";
+import { DateRange } from "react-day-picker";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface DashboardData {
@@ -32,7 +36,8 @@ interface KommoStatus {
 interface StageMetricsResponse {
   monthStart: string;
   monthEnd: string;
-  totalRows: number;
+  totalRowsHuman: number;
+  totalRowsAi: number;
   sumResponseTimeHuman: number; // segundos (total do mês)
   sumResponseTimeAi: number;    // segundos (total do mês)
 }
@@ -45,37 +50,26 @@ async function fetchStageMetrics(month: string): Promise<StageMetricsResponse> {
 }
 
 export default function Dashboard() {
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  });
+  const [selectedRange, setSelectedRange] = useState<DateRange | undefined>(undefined);
 
-  const monthOptions = useMemo(() => {
-    const options = [];
-    const now = new Date();
-    options.push({ value: "all", label: "Todos os meses" });
-
-    for (let i = 0; i < 12; i++) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      const label = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-      options.push({ value, label });
-    }
-    return options;
-  }, []);
+  const dateFrom = selectedRange?.from ? selectedRange.from.toISOString().split('T')[0] : undefined;
+  const dateTo = selectedRange?.to ? selectedRange.to.toISOString().split('T')[0] : undefined;
 
   const { data: funnelData } = useQuery({
-    queryKey: ["sales-funnel", selectedMonth],
+    queryKey: ["sales-funnel", dateFrom, dateTo],
     queryFn: async () => {
-      const res = await fetch(`/api/dashboard/funnel?month=${selectedMonth}`);
+      const query = new URLSearchParams();
+      if (dateFrom) query.set('dateFrom', dateFrom);
+      if (dateTo) query.set('dateTo', dateTo);
+      const res = await fetch(`/api/dashboard/funnel?${query.toString()}`);
       if (!res.ok) throw new Error("Erro funil");
       return res.json();
     },
   });
 
   const { data: stageMetrics, isLoading: loadingStages } = useQuery({
-    queryKey: ["kommo-stage-metrics", selectedMonth],
-    queryFn: () => fetchStageMetrics(selectedMonth === "all" ? "current" : selectedMonth),
+    queryKey: ["kommo-stage-metrics", dateFrom, dateTo],
+    queryFn: () => fetchStageMetrics("current"),
     refetchInterval: 60000,
   });
 
@@ -96,18 +90,27 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {monthOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-48">
+                  <Filter className="w-4 h-4 mr-2" />
+                  {selectedRange?.from && selectedRange?.to
+                    ? `${selectedRange.from.toLocaleDateString('pt-BR')} - ${selectedRange.to.toLocaleDateString('pt-BR')}`
+                    : selectedRange?.from
+                    ? `A partir de ${selectedRange.from.toLocaleDateString('pt-BR')}`
+                    : "Selecionar período"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={selectedRange}
+                  onSelect={setSelectedRange}
+                  numberOfMonths={2}
+                />
+              </PopoverContent>
+            </Popover>
+
             <ThemeToggle />
           </div>
         </div>
@@ -141,7 +144,7 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <TagPieChart month={selectedMonth} />
+              <TagPieChart dateFrom={dateFrom} dateTo={dateTo} />
             </CardContent>
           </Card>
 
@@ -152,7 +155,7 @@ export default function Dashboard() {
               <CardDescription>Distribuição por etapa</CardDescription>
             </CardHeader>
             <CardContent>
-              <LeadsPipelineChart month={selectedMonth} />
+              <LeadsPipelineChart dateFrom={dateFrom} dateTo={dateTo} />
             </CardContent>
           </Card>
 
@@ -180,7 +183,7 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex items-center">
-              <ErrosDaIAChart stageId="100621824" month={selectedMonth} />
+              <ErrosDaIAChart stageId="100621824" dateFrom={dateFrom} dateTo={dateTo} />
             </CardContent>
           </Card>
 

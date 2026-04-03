@@ -4,10 +4,11 @@ import { motion, animate } from "framer-motion";
 interface Props {
   stageId: string;
   title?: string;
-  month?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
-export default function KommoStageChart({ stageId, title = "Erros da IA", month }: Props) {
+export default function KommoStageChart({ stageId, title = "Erros da IA", dateFrom, dateTo }: Props) {
   const [value, setValue] = useState(0);
   const [display, setDisplay] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -16,7 +17,11 @@ export default function KommoStageChart({ stageId, title = "Erros da IA", month 
     async function load() {
       try {
         setLoading(true);
-        const res = await fetch(`/kommo/leads-by-stage-month?stageId=${stageId}&month=${month || 'current'}`);
+        const query = new URLSearchParams();
+        query.set('stageId', stageId);
+        if (dateFrom) query.set('dateFrom', dateFrom);
+        if (dateTo) query.set('dateTo', dateTo);
+        const res = await fetch(`/kommo/leads-by-stage-month?${query.toString()}`);
         const data = await res.json();
         setValue(data.total || 0);
       } catch (e) {
@@ -27,7 +32,7 @@ export default function KommoStageChart({ stageId, title = "Erros da IA", month 
     }
 
     load();
-  }, [stageId, month]);
+  }, [stageId, dateFrom, dateTo]);
 
   useEffect(() => {
     const controls = animate(display, value, {

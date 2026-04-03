@@ -83,6 +83,63 @@ function normalizeMonthKey(value: any): string | null {
   return null;
 }
 
+function parseMonthFilter(month: string): { year: number; month: number } | null {
+  if (!month || month === 'all') return null;
+
+  const [year, monthNum] = month.split('-').map(Number);
+  if (!Number.isFinite(year) || !Number.isFinite(monthNum)) return null;
+
+  return { year, month: monthNum };
+}
+
+function getLeadDate(lead: any): Date | null {
+  const value = lead?.created_at ?? lead?.inserted_at ?? lead?.updated_at;
+  if (!value) return null;
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value;
+  }
+
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed;
+  }
+
+  return null;
+}
+
+function getLeadDayOfMonth(lead: any): number | null {
+  const date = getLeadDate(lead);
+  if (!date) return null;
+
+  return date.getDate(); // 1 - 31
+}
+
+function isLeadInDayOfMonth(lead: any, dayOfMonth: number | 'all'): boolean {
+  if (dayOfMonth === 'all') return true;
+
+  const leadDOM = getLeadDayOfMonth(lead);
+  if (leadDOM === null) return false;
+
+  return leadDOM === dayOfMonth;
+}
+
+function isLeadInDateRange(lead: any, dateRange: { from: Date; to: Date }): boolean {
+  const leadDate = getLeadDate(lead);
+  if (!leadDate) return false;
+  return leadDate >= dateRange.from && leadDate <= dateRange.to;
+}
+
+function isLeadInMonth(lead: any, monthKey: string): boolean {
+  if (monthKey === 'all') return true;
+
+  const leadDate = getLeadDate(lead);
+  if (!leadDate) return false;
+
+  const normalized = normalizeMonthKey(leadDate);
+  return normalized === monthKey;
+}
+
 function parseTags(value: unknown): Array<{ name?: string }> {
   if (Array.isArray(value)) return value as Array<{ name?: string }>;
 
@@ -598,14 +655,18 @@ class HybridStorage implements IStorage {
         .sort((a, b) => b.total - a.total || a.tag.localeCompare(b.tag));
     }
 
-    return this.getTagCountsByMonth(currentMonth);
+    return this.getTagCountsByDateRange('all');
   }
 
-  async getTagCountsByMonth(month: string): Promise<TagCount[]> {
-    const forAll = month === 'all';
+  async getTagCountsByDateRange(dateRange: { from: Date; to: Date } | 'all'): Promise<TagCount[]> {
+    const forAll = dateRange === 'all';
 
     if (this.isDatabaseAvailable) {
       try {
+        const dateRangeCondition = forAll
+          ? sql``
+          : sql`AND COALESCE(created_at::date, updated_at::date) BETWEEN ${dateRange.from.toISOString().split('T')[0]} AND ${dateRange.to.toISOString().split('T')[0]}`;
+
         const result = await db.execute(sql<TagCount>`
           SELECT
             tag->>'name' AS tag,
@@ -615,7 +676,7 @@ class HybridStorage implements IStorage {
             COALESCE(NULLIF(trim(tags_json::text), '')::jsonb, '[]'::jsonb)
           ) AS tag ON TRUE
           WHERE is_deleted = false
-            ${forAll ? sql`` : sql`AND to_char(COALESCE(month_ref::date, created_at::date), 'YYYY-MM') = ${month}`}
+            ${dateRangeCondition}
             AND COALESCE(tag->>'name', '') <> ''
           GROUP BY tag->>'name'
           ORDER BY total DESC, tag->>'name' ASC;
@@ -623,7 +684,7 @@ class HybridStorage implements IStorage {
 
         return extractRows<TagCount>(result);
       } catch (error) {
-        console.error("Error fetching tag counts by month:", error);
+        console.error("Error fetching tag counts by date range:", error);
         this.isDatabaseAvailable = false;
       }
     }
@@ -631,8 +692,7 @@ class HybridStorage implements IStorage {
     const counts = new Map<string, number>();
 
     for (const lead of this.memoryLeads.values()) {
-      const leadMonth = normalizeMonthKey(lead?.month_ref) ?? normalizeMonthKey(lead?.created_at);
-      if (!forAll && leadMonth !== month) continue;
+      if (!forAll && !isLeadInDateRange(lead, dateRange as { from: Date; to: Date })) continue;
       if (lead?.is_deleted) continue;
 
       const tags = parseTags(lead?.tags_json ?? lead?.tags);
@@ -817,7 +877,7 @@ class HybridStorage implements IStorage {
     return undefined;
   }
 
-  async getFunnelByMonth(month: string): Promise<{
+  async getFunnelByDateRange(dateRange: { from: Date; to: Date } | 'all'): Promise<{
     leads: number;
     opportunities: number;
     visitsA: number;
@@ -825,7 +885,7 @@ class HybridStorage implements IStorage {
     reservations: number;
     sales: number;
   }> {
-    const forAll = month === 'all';
+    const forAll = dateRange === 'all';
 
     if (this.isDatabaseAvailable) {
       try {
@@ -834,6 +894,10 @@ class HybridStorage implements IStorage {
         const VISIT_DONE_STATUS_IDS = [94531847];
         const RESERVATION_STATUS_IDS = [96470303];
         const SALES_STATUS_IDS = [142];
+
+        const dateRangeCondition = forAll
+          ? sql``
+          : sql`AND COALESCE(created_at::date, updated_at::date) BETWEEN ${dateRange.from.toISOString().split('T')[0]} AND ${dateRange.to.toISOString().split('T')[0]}`;
 
         const result = await db.execute(sql<{
           leads: number;
@@ -853,24 +917,27 @@ class HybridStorage implements IStorage {
               )
             )::int AS "opportunities",
             COUNT(DISTINCT lead_id) FILTER (
-              WHERE status_id = ANY(${VISIT_SCHEDULED_STATUS_IDS}::int[])
+              WHERE status_id = ${VISIT_SCHEDULED_STATUS_IDS[0]}
             )::int AS "visitsA",
             COUNT(DISTINCT lead_id) FILTER (
-              WHERE status_id = ANY(${VISIT_DONE_STATUS_IDS}::int[])
+              WHERE status_id = ${VISIT_DONE_STATUS_IDS[0]}
             )::int AS "visitsR",
             COUNT(DISTINCT lead_id) FILTER (
-              WHERE status_id = ANY(${RESERVATION_STATUS_IDS}::int[])
+              WHERE status_id = ${RESERVATION_STATUS_IDS[0]}
             )::int AS reservations,
             COUNT(DISTINCT lead_id) FILTER (
-              WHERE status_id = ANY(${SALES_STATUS_IDS}::int[])
+              WHERE status_id = ${SALES_STATUS_IDS[0]}
             )::int AS sales
           FROM kommo_leads
           WHERE is_deleted = false
-            ${forAll ? sql`` : sql`AND to_char(COALESCE(month_ref::date, created_at::date), 'YYYY-MM') = ${month}`};
+            ${dateRangeCondition};
         `);
 
+
+        console.log("📊 Funnel query result:", result);
         const row = extractRows<any>(result)[0] ?? {};
 
+        console.log("📊 Extracted funnel row:", row);
         return {
           leads: Number(row.leads ?? 0),
           opportunities: Number(row.opportunities ?? 0),
@@ -880,7 +947,7 @@ class HybridStorage implements IStorage {
           sales: Number(row.sales ?? 0),
         };
       } catch (error) {
-        console.error("Error fetching funnel by month:", error);
+        console.error("Error fetching funnel by date range:", error);
         this.isDatabaseAvailable = false;
       }
     }
@@ -895,8 +962,7 @@ class HybridStorage implements IStorage {
     };
 
     for (const lead of this.memoryLeads.values()) {
-      const leadMonth = normalizeMonthKey(lead?.month_ref) ?? normalizeMonthKey(lead?.created_at);
-      if (!forAll && leadMonth !== month) continue;
+      if (!forAll && !isLeadInDateRange(lead, dateRange as { from: Date; to: Date })) continue;
       if (lead?.is_deleted) continue;
 
       empty.leads += 1;
