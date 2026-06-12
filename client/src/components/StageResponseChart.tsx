@@ -6,10 +6,8 @@ interface StageMetricsResponse {
   monthEnd: string;
 
   totalRowsHuman: number;
-  totalRowsAi: number;
 
   sumResponseTimeHuman: number; // segundos (soma do mês)
-  sumResponseTimeAi: number;    // segundos (soma do mês)
 }
 
 interface Props {
@@ -42,14 +40,11 @@ function formatSecondsToTime(totalSeconds: number): string {
 
 export default function StageResponseChart({ metrics }: Props) {
   const totalHuman = Math.max(1, Number(metrics.totalRowsHuman ?? 0));
-  const totalAi = Math.max(1, Number(metrics.totalRowsAi ?? 0));
 
   const avgHumanSeconds = Number(metrics.sumResponseTimeHuman ?? 0) / totalHuman;
-  const avgAiSeconds = Number(metrics.sumResponseTimeAi ?? 0) / totalAi;
 
   const data = [
     { name: "Humano", seconds: avgHumanSeconds, base: Number(metrics.totalRowsHuman ?? 0) },
-    { name: "IA", seconds: avgAiSeconds, base: Number(metrics.totalRowsAi ?? 0) },
   ];
 
   return (
@@ -64,7 +59,7 @@ export default function StageResponseChart({ metrics }: Props) {
       </p>
 
       <p className="text-xs text-center text-muted-foreground mb-3">
-        Base: Humano {Number(metrics.totalRowsHuman ?? 0)} leads · IA {Number(metrics.totalRowsAi ?? 0)} leads
+        Base: {Number(metrics.totalRowsHuman ?? 0)} leads
       </p>
 
       <div className="w-full h-64">

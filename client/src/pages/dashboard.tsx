@@ -162,7 +162,7 @@ export default function Dashboard() {
           <Card className="xl:col-span-1">
             <CardHeader>
               <CardTitle>Tempo de Resposta</CardTitle>
-              <CardDescription>Comparação: IA vs Atendimento Humano</CardDescription>
+              <CardDescription>Atendimento Humano</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center">
               {loadingStages ? (
