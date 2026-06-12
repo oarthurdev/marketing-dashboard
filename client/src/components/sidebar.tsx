@@ -5,7 +5,6 @@ import {
   BarChart3,
   Users,
   DollarSign,
-  Target,
   FileText,
   Settings,
   TrendingUp,
@@ -106,17 +105,6 @@ export default function Sidebar({ connections }: SidebarProps) {
             Dashboard
           </Link>
 
-          <Link
-            href="/campaigns"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
-              isActive("/campaigns")
-                ? "text-foreground bg-popover border-l-4 border-sidebar-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-popover"
-            }`}
-          >
-            <Target className="w-5 h-5 mr-3" />
-            Campanhas
-          </Link>
         </div>
         {/* Bottom section with logout */}
         <div className="absolute bottom-0 left-0 right-0 p-6">
