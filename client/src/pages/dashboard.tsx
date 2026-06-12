@@ -41,6 +41,35 @@ interface StageMetricsResponse {
   sumResponseTimeAi: number;    // segundos (total do mês)
 }
 
+type PeriodMode = "daily" | "weekly" | "fortnightly" | "monthly" | "custom";
+
+function getPresetRange(mode: Exclude<PeriodMode, "custom">): DateRange {
+  const to = new Date();
+  to.setHours(0, 0, 0, 0);
+
+  const from = new Date(to);
+
+  if (mode === "weekly") {
+    from.setDate(from.getDate() - 6);
+  } else if (mode === "fortnightly") {
+    from.setDate(from.getDate() - 14);
+  } else if (mode === "monthly") {
+    from.setDate(1);
+  }
+
+  return { from, to };
+}
+
+function formatDateParam(date?: Date): string | undefined {
+  if (!date) return undefined;
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 
 async function fetchStageMetrics(month: string): Promise<StageMetricsResponse> {
   const res = await fetch(`/kommo/stage-metrics?month=${month}`);
@@ -49,10 +78,16 @@ async function fetchStageMetrics(month: string): Promise<StageMetricsResponse> {
 }
 
 export default function Dashboard() {
-  const [selectedRange, setSelectedRange] = useState<DateRange | undefined>(undefined);
+  const [periodMode, setPeriodMode] = useState<PeriodMode>("custom");
+  const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
 
-  const dateFrom = selectedRange?.from ? selectedRange.from.toISOString().split('T')[0] : undefined;
-  const dateTo = selectedRange?.to ? selectedRange.to.toISOString().split('T')[0] : undefined;
+  const selectedRange = useMemo(
+    () => periodMode === "custom" ? customRange : getPresetRange(periodMode),
+    [periodMode, customRange]
+  );
+
+  const dateFrom = formatDateParam(selectedRange?.from);
+  const dateTo = formatDateParam(selectedRange?.to);
 
   const { data: funnelData } = useQuery({
     queryKey: ["sales-funnel", dateFrom, dateTo],
@@ -89,26 +124,43 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-48">
+            <div className="flex items-center gap-2">
+              <Select value={periodMode} onValueChange={(value) => setPeriodMode(value as PeriodMode)}>
+                <SelectTrigger className="w-40">
                   <Filter className="w-4 h-4 mr-2" />
-                  {selectedRange?.from && selectedRange?.to
-                    ? `${selectedRange.from.toLocaleDateString('pt-BR')} - ${selectedRange.to.toLocaleDateString('pt-BR')}`
-                    : selectedRange?.from
-                    ? `A partir de ${selectedRange.from.toLocaleDateString('pt-BR')}`
-                    : "Selecionar período"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="range"
-                  selected={selectedRange}
-                  onSelect={setSelectedRange}
-                  numberOfMonths={2}
-                />
-              </PopoverContent>
-            </Popover>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Diário</SelectItem>
+                  <SelectItem value="weekly">Semanal</SelectItem>
+                  <SelectItem value="fortnightly">Quinzenal</SelectItem>
+                  <SelectItem value="monthly">Mensal</SelectItem>
+                  <SelectItem value="custom">Personalizado</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {periodMode === "custom" && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-48">
+                      {selectedRange?.from && selectedRange?.to
+                        ? `${selectedRange.from.toLocaleDateString('pt-BR')} - ${selectedRange.to.toLocaleDateString('pt-BR')}`
+                        : selectedRange?.from
+                        ? `A partir de ${selectedRange.from.toLocaleDateString('pt-BR')}`
+                        : "Selecionar período"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="range"
+                      selected={customRange}
+                      onSelect={setCustomRange}
+                      numberOfMonths={2}
+                    />
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
 
             <ThemeToggle />
           </div>
