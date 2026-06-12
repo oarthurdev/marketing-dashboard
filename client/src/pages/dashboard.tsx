@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, Activity, Filter } from "lucide-react";
+import { BarChart3, Activity, ChevronLeft, ChevronRight, Filter } from "lucide-react";
 import SalesFunnel from "@/components/SalesFunnel";
 import { LeadsPipelineChart } from "@/components/LeadsPipelineChart";
 import ThemeToggle from "@/components/ui/theme-toggle";
@@ -43,21 +43,52 @@ interface StageMetricsResponse {
 
 type PeriodMode = "daily" | "weekly" | "fortnightly" | "monthly" | "custom";
 
-function getPresetRange(mode: Exclude<PeriodMode, "custom">): DateRange {
-  const to = new Date();
-  to.setHours(0, 0, 0, 0);
+function startOfToday(): Date {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
 
-  const from = new Date(to);
+function getPresetRange(
+  mode: Exclude<PeriodMode, "custom">,
+  offset: number
+): DateRange {
+  const today = startOfToday();
 
-  if (mode === "weekly") {
-    from.setDate(from.getDate() - 6);
-  } else if (mode === "fortnightly") {
-    from.setDate(from.getDate() - 14);
-  } else if (mode === "monthly") {
-    from.setDate(1);
+  if (mode === "daily") {
+    const date = new Date(today);
+    date.setDate(date.getDate() + offset);
+    return { from: date, to: date };
   }
 
-  return { from, to };
+  if (mode === "weekly") {
+    const from = new Date(today);
+    const daysSinceMonday = (from.getDay() + 6) % 7;
+    from.setDate(from.getDate() - daysSinceMonday + offset * 7);
+
+    const to = new Date(from);
+    to.setDate(to.getDate() + 6);
+
+    return { from, to: offset === 0 ? today : to };
+  }
+
+  if (mode === "fortnightly") {
+    const currentHalf = today.getDate() <= 15 ? 0 : 1;
+    const halfIndex = today.getFullYear() * 24 + today.getMonth() * 2 + currentHalf + offset;
+    const year = Math.floor(halfIndex / 24);
+    const indexWithinYear = halfIndex - year * 24;
+    const month = Math.floor(indexWithinYear / 2);
+    const half = indexWithinYear % 2;
+    const from = new Date(year, month, half === 0 ? 1 : 16);
+    const to = half === 0 ? new Date(year, month, 15) : new Date(year, month + 1, 0);
+
+    return { from, to: offset === 0 ? today : to };
+  }
+
+  const from = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+  const to = new Date(from.getFullYear(), from.getMonth() + 1, 0);
+
+  return { from, to: offset === 0 ? today : to };
 }
 
 function formatDateParam(date?: Date): string | undefined {
@@ -70,6 +101,36 @@ function formatDateParam(date?: Date): string | undefined {
   return `${year}-${month}-${day}`;
 }
 
+function formatPeriodLabel(
+  mode: Exclude<PeriodMode, "custom">,
+  range: DateRange
+): string {
+  if (!range.from || !range.to) return "";
+
+  if (mode === "daily") {
+    return range.from.toLocaleDateString("pt-BR");
+  }
+
+  if (mode === "fortnightly") {
+    const half = range.from.getDate() === 1 ? "1ª" : "2ª";
+    const month = range.from.toLocaleDateString("pt-BR", {
+      month: "long",
+      year: "numeric",
+    });
+    return `${half} quinzena de ${month}`;
+  }
+
+  if (mode === "monthly") {
+    const month = range.from.toLocaleDateString("pt-BR", {
+      month: "long",
+      year: "numeric",
+    });
+    return month.charAt(0).toUpperCase() + month.slice(1);
+  }
+
+  return `${range.from.toLocaleDateString("pt-BR")} - ${range.to.toLocaleDateString("pt-BR")}`;
+}
+
 
 async function fetchStageMetrics(month: string): Promise<StageMetricsResponse> {
   const res = await fetch(`/kommo/stage-metrics?month=${month}`);
@@ -79,15 +140,24 @@ async function fetchStageMetrics(month: string): Promise<StageMetricsResponse> {
 
 export default function Dashboard() {
   const [periodMode, setPeriodMode] = useState<PeriodMode>("custom");
+  const [periodOffset, setPeriodOffset] = useState(0);
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
 
   const selectedRange = useMemo(
-    () => periodMode === "custom" ? customRange : getPresetRange(periodMode),
-    [periodMode, customRange]
+    () => periodMode === "custom" ? customRange : getPresetRange(periodMode, periodOffset),
+    [periodMode, periodOffset, customRange]
   );
 
   const dateFrom = formatDateParam(selectedRange?.from);
   const dateTo = formatDateParam(selectedRange?.to);
+  const periodLabel = periodMode === "custom"
+    ? ""
+    : formatPeriodLabel(periodMode, selectedRange as DateRange);
+
+  const handlePeriodModeChange = (value: string) => {
+    setPeriodMode(value as PeriodMode);
+    setPeriodOffset(0);
+  };
 
   const { data: funnelData } = useQuery({
     queryKey: ["sales-funnel", dateFrom, dateTo],
@@ -125,7 +195,7 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Select value={periodMode} onValueChange={(value) => setPeriodMode(value as PeriodMode)}>
+              <Select value={periodMode} onValueChange={handlePeriodModeChange}>
                 <SelectTrigger className="w-40">
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue />
@@ -139,7 +209,32 @@ export default function Dashboard() {
                 </SelectContent>
               </Select>
 
-              {periodMode === "custom" && (
+              {periodMode !== "custom" ? (
+                <div className="flex items-center">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-r-none"
+                    aria-label="Período anterior"
+                    onClick={() => setPeriodOffset((offset) => offset - 1)}
+                  >
+                    <ChevronLeft />
+                  </Button>
+                  <div className="flex h-10 min-w-52 items-center justify-center border-y-2 border-border bg-background px-4 text-sm font-medium">
+                    {periodLabel}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-l-none"
+                    aria-label="Próximo período"
+                    disabled={periodOffset === 0}
+                    onClick={() => setPeriodOffset((offset) => Math.min(offset + 1, 0))}
+                  >
+                    <ChevronRight />
+                  </Button>
+                </div>
+              ) : (
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-48">
