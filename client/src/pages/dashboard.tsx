@@ -7,7 +7,6 @@ import SalesFunnel from "@/components/SalesFunnel";
 import { LeadsPipelineChart } from "@/components/LeadsPipelineChart";
 import ThemeToggle from "@/components/ui/theme-toggle";
 import StageResponseChart from "@/components/StageResponseChart";
-import ErrosDaIAChart from "@/components/ErrosDaIAChart";
 import { TagPieChart } from "@/components/TagPieChart";
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
@@ -171,19 +170,6 @@ export default function Dashboard() {
               ) : (
                 stageMetrics && <StageResponseChart metrics={stageMetrics} />
               )}
-            </CardContent>
-          </Card>
-
-          {/* LEADS NA ETAPA — menor KPI */}
-          <Card className="xl:col-span-1">
-            <CardHeader>
-              <CardTitle>Erros da IA</CardTitle>
-              <CardDescription>
-                Quantidade de erros no mês
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex items-center">
-              <ErrosDaIAChart stageId="100621824" dateFrom={dateFrom} dateTo={dateTo} />
             </CardContent>
           </Card>
 
