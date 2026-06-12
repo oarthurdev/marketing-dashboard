@@ -177,7 +177,7 @@ export default function SalesFunnel({ data, rangeLabel, className }: Props) {
             whileHover={{ scale: 1.02 }}
           >
             <path
-              d="M290 210 L370 150 L650 150 L770 210 Z"
+              d="M290 150 L770 150 L670 210 L390 210 Z"
               fill="url(#topGrad)"
               filter="url(#softShadow)"
             />
