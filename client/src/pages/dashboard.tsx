@@ -8,6 +8,7 @@ import { LeadsPipelineChart } from "@/components/LeadsPipelineChart";
 import ThemeToggle from "@/components/ui/theme-toggle";
 import StageResponseChart from "@/components/StageResponseChart";
 import { TagPieChart } from "@/components/TagPieChart";
+import { LostLeadsChart } from "@/components/LostLeadsChart";
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -302,6 +303,18 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <LeadsPipelineChart dateFrom={dateFrom} dateTo={dateTo} />
+            </CardContent>
+          </Card>
+
+          <Card className="xl:col-span-2">
+            <CardHeader>
+              <CardTitle>Leads Perdidos</CardTitle>
+              <CardDescription>
+                Quantidade de leads perdidos por motivo
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LostLeadsChart dateFrom={dateFrom} dateTo={dateTo} />
             </CardContent>
           </Card>
 

@@ -200,6 +200,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/dashboard/lost-leads", async (req, res) => {
+    try {
+      const { dateFrom, dateTo } = req.query as { dateFrom?: string; dateTo?: string };
+      const dateRange = normalizeDateRangeQuery(dateFrom, dateTo);
+
+      if (dateRange === null) {
+        return res.status(400).json({ message: "Invalid date range. Use dateFrom/dateTo as YYYY-MM-DD or all, with dateFrom <= dateTo" });
+      }
+
+      const lostLeads = await storage.getLostLeadsByDateRange(dateRange);
+      return res.json(lostLeads);
+    } catch (error) {
+      console.error("Error fetching lost leads:", error);
+      return res.status(500).json({ message: "Failed to fetch lost leads" });
+    }
+  });
+
   // Backward-compatible alias
   app.get("/api/funnel", handleFunnelRequest);
 

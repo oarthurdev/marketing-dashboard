@@ -38,6 +38,16 @@ type TagCount = {
   total: number;
 };
 
+type LostLeadReasonCount = {
+  reason: string;
+  total: number;
+};
+
+type LostLeadsSummary = {
+  totalLost: number;
+  reasons: LostLeadReasonCount[];
+};
+
 export type Period = "all" | "daily" | "weekly" | "monthly";
 
 type PipelineSummary = {
@@ -707,6 +717,86 @@ class HybridStorage implements IStorage {
     return Array.from(counts.entries())
       .map(([tag, total]) => ({ tag, total }))
       .sort((a, b) => b.total - a.total || a.tag.localeCompare(b.tag));
+  }
+
+  async getLostLeadsByDateRange(
+    dateRange: { from: Date; to: Date } | 'all'
+  ): Promise<LostLeadsSummary> {
+    const forAll = dateRange === 'all';
+    const emptyReasons = [
+      { reason: "Sem interesse", total: 0 },
+      { reason: "Não respondeu", total: 0 },
+      { reason: "Sem perfil", total: 0 },
+      { reason: "Sem aprovação de crédito", total: 0 },
+      { reason: "Comprou com concorrente", total: 0 },
+      { reason: "Valor acima do orçamento", total: 0 },
+      { reason: "Outros", total: 0 },
+    ];
+
+    if (this.isDatabaseAvailable) {
+      try {
+        const dateRangeCondition = forAll
+          ? sql``
+          : sql`AND closed_at::date BETWEEN ${dateRange.from.toISOString().split('T')[0]} AND ${dateRange.to.toISOString().split('T')[0]}`;
+
+        const result = await db.execute(sql<{
+          totalLost: number;
+          semInteresse: number;
+          naoRespondeu: number;
+          concorrente: number;
+          acimaOrcamento: number;
+          outros: number;
+        }>`
+          SELECT
+            COUNT(DISTINCT lead_id)::int AS "totalLost",
+            COUNT(DISTINCT lead_id) FILTER (
+              WHERE loss_reason_id = 31992111
+            )::int AS "semInteresse",
+            COUNT(DISTINCT lead_id) FILTER (
+              WHERE loss_reason_id = 32215015
+            )::int AS "naoRespondeu",
+            COUNT(DISTINCT lead_id) FILTER (
+              WHERE loss_reason_id = 30906524
+            )::int AS concorrente,
+            COUNT(DISTINCT lead_id) FILTER (
+              WHERE loss_reason_id = 30906512
+            )::int AS "acimaOrcamento",
+            COUNT(DISTINCT lead_id) FILTER (
+              WHERE loss_reason_id IS NULL
+                OR loss_reason_id NOT IN (
+                  31992111,
+                  32215015,
+                  30906524,
+                  30906512
+                )
+            )::int AS outros
+          FROM kommo_leads
+          WHERE is_deleted = false
+            AND status_id = 143
+            ${dateRangeCondition};
+        `);
+
+        const row = extractRows<any>(result)[0] ?? {};
+
+        return {
+          totalLost: Number(row.totalLost ?? row.totallost ?? 0),
+          reasons: [
+            { reason: "Sem interesse", total: Number(row.semInteresse ?? row.seminteresse ?? 0) },
+            { reason: "Não respondeu", total: Number(row.naoRespondeu ?? row.naorespondeu ?? 0) },
+            { reason: "Sem perfil", total: 0 },
+            { reason: "Sem aprovação de crédito", total: 0 },
+            { reason: "Comprou com concorrente", total: Number(row.concorrente ?? 0) },
+            { reason: "Valor acima do orçamento", total: Number(row.acimaOrcamento ?? row.acimaorcamento ?? 0) },
+            { reason: "Outros", total: Number(row.outros ?? 0) },
+          ],
+        };
+      } catch (error) {
+        console.error("Error fetching lost leads by date range:", error);
+        this.isDatabaseAvailable = false;
+      }
+    }
+
+    return { totalLost: 0, reasons: emptyReasons };
   }
 
   // Campaigns methods
